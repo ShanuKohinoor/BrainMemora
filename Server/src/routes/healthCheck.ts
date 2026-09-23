@@ -10,4 +10,9 @@ router.get("/health",(req,res)=>{
 })
 
 
+router.get('/testError',()=>{
+    throw new Error('Test Error is working')
+})
+
+
 export default router
