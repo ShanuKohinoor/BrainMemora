@@ -12,7 +12,7 @@ import { createUserToken } from "../utils/userToken.js";
 export const registerUser = async(
     //  Typed request body
     req: Request<{},{},RegisterRequestBody>,
-    res: Response<ApiResponse>
+    res: Response<ApiResponse<null>>
 )=>{
         // Get registration data from request body
       const { name, email, password } = req.body;
@@ -53,7 +53,7 @@ export const registerUser = async(
 
   export const loginUser = async (
     req:Request<{},{},LoginRequestBody>,
-    res:Response<ApiResponse>
+    res:Response<ApiResponse<null>>
   ) =>{
     const {email,password} = req.body
 
@@ -83,3 +83,18 @@ export const registerUser = async(
     })
 
   }                      
+
+
+
+              // Logout Controller
+
+    export const logOutUser = (
+      req:Request,
+      res:Response<ApiResponse<null>>
+    )=>{
+       res.clearCookie("userToken")
+        return res.status(200).json({
+          success:true,
+          message:"Logged out Successfully"
+       })
+    }
