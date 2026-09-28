@@ -34,6 +34,19 @@ export function verifyUser(
         // Allow the request to continue
        next()
     }catch(error){
+            // Handle expired JWT
+        if(error instanceof jwt.TokenExpiredError){
+           return next(
+             new UnauthorizedError("Session expired. Please login again")
+           ) 
+        }
+
+            // Handle invalid JWT
+         if(error instanceof jwt.JsonWebTokenError){
+            return next(
+                 new UnauthorizedError("Invalid token. Please login first")
+            )
+         }
         // Pass the error to Express error-handling middleware
           return next(error)
     }
