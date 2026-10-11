@@ -1,5 +1,4 @@
-interface Note{
-    id:string;
+export interface Note{
     userId:string;
     title:string;
     topic:string;

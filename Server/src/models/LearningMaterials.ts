@@ -24,10 +24,14 @@ const learningMaterialSchema = new mongoose.Schema<LearningMaterial>({
         enum: ["pdf","audio","video","image","article","notes"],
         required:true
       },
-      fileUrl:{
+      fileUrl:{                          // Temporary s3 url
         type: String,
       },
-      externalUrl:{
+      fileKey:{                         // Idenfies the actual s3 file
+      type: String
+      },
+
+      externalUrl:{                    // External wesite url
         type:String
       },
       tags:{

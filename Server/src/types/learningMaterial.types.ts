@@ -9,6 +9,7 @@ export interface LearningMaterial{
     type:MaterialType;
     description?: string;
     fileUrl?: string;
+    fileKey?: string;
     externalUrl?: string;
     topic:string;
     tags?:string[];
@@ -25,6 +26,7 @@ export interface CreateLearningMaterialBody{
     description?:string | undefined;
     type:MaterialType;
     fileUrl?:string | undefined;
+    fileKey?: string | undefined;
     externalUrl?: string | undefined;
     tags?:string[] | undefined
 

@@ -7,140 +7,150 @@ import type { ApiResponse } from "../types/apiResponse.types.js"
 import type { User } from "../types/user.types.js"
 import type { LearningMaterial,CreateLearningMaterialBody } from "../types/learningMaterial.types.js"
 import { learningMaterialModel } from "../models/LearningMaterials.js"
-
+import { uploadToS3, getFileUrl, deleteFromS3 } from "../services/storageServices.js"
+import { noteModel } from "../models/notes.js"
+import type { Note } from "../types/note.types.js"
 
 
 //Get profile
-export const getProfile = async (
-    req:Request,
-    res:Response<ApiResponse<User>>
-)=>{
+    export const getProfile = async (
+        req:Request,
+        res:Response<ApiResponse<User>>
+    )=>{
+            if (!req.userId) {
+              throw new UnauthorizedError("Please login first")
+            }
+
+          const id = req.userId
+
+          const user = await UserModel.findById(id).select("-password")
+            if (!user) {
+                throw new NotFoundError("User not found")
+            }
+
+
+          return res.status(200).json({
+            success:true,
+            message:"Profile fetched successfully",
+            data: user
+
+          })
+    }
+
+
+
+    //Update profile
+
+    export const updateProfile = async (
+        req: Request,
+        res: Response<ApiResponse<User>>
+    ) => {
+        // Check if the user is logged in
         if (!req.userId) {
-          throw new UnauthorizedError("Please login first")
+            throw new UnauthorizedError("Please login first")
         }
 
-      const id = req.userId
+        // Get updated profile data
+        const { name, email } = req.body
 
-      const user = await UserModel.findById(id).select("-password")
+        // Get logged-in user's ID
+        const id = req.userId
+
+        // Find the user
+         const user = await UserModel.findById(id).select("-password");
+        // Check if user exists
         if (!user) {
             throw new NotFoundError("User not found")
         }
 
 
-      return res.status(200).json({
-        success:true,
-        message:"Profile fetched successfully",
-        data: user
+        // Update user details
+        if(name !== undefined){
+            user.name = name
+        }
+        if(email !== undefined){
 
-      })
-}
+            // Check for duplicate email
+            const existingEmail = await UserModel.findOne({email})
 
+            if(existingEmail && existingEmail.id !== req.userId){
+            throw new ConflictError("User already exist")
+            }
 
-
-//Update profile
-
-export const updateProfile = async (
-    req: Request,
-    res: Response<ApiResponse<User>>
-) => {
-    // Check if the user is logged in
-    if (!req.userId) {
-        throw new UnauthorizedError("Please login first")
-    }
-
-    // Get updated profile data
-    const { name, email } = req.body
-
-    // Get logged-in user's ID
-    const id = req.userId
-
-    // Find the user
-    const user = await UserModel.findById(id)
-
-    // Check if user exists
-    if (!user) {
-        throw new NotFoundError("User not found")
-    }
-
-
-    // Update user details
-    if(name !== undefined){
-        user.name = name
-    }
-    if(email !== undefined){
-
-        // Check for duplicate email
-        const existingEmail = await UserModel.findOne({email})
-
-        if(existingEmail && existingEmail.id !== req.userId){
-        throw new ConflictError("User already exist")
+            user.email = email
         }
 
-        user.email = email
+        // Save updated user
+        await user.save()
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data:user
+        })
     }
-
-    // Save updated user
-    await user.save()
-
-    return res.status(200).json({
-        success: true,
-        message: "Profile updated successfully",
-        data:user
-    })
-}
 
 
 //                        Learning Material controllers
 
 // Create new Learning Material
- export const createLearningMaterial = async(
-    req:Request<{},{},CreateLearningMaterialBody>,
-    res:Response<ApiResponse<LearningMaterial>>)=>{
+    export const createLearningMaterial = async(
+        req:Request<{},{},CreateLearningMaterialBody>,
+        res:Response<ApiResponse<LearningMaterial>>)=>{
 
-      if(!req.userId){
-        throw new UnauthorizedError("Please login First");  
-      }
+          if(!req.userId){
+            throw new UnauthorizedError("Please login First");
+          }
 
-      // Get required fields from the request body
-      const {title,topic,type,description,fileUrl,externalUrl,tags} = req.body
+          // Get required fields from the request body
+          const {title,topic,type,description,fileUrl,fileKey,externalUrl,tags} = req.body
 
-      // Check whether required fields are provided
-      if(!title || !topic || !type){
-        throw new BadRequest("Please enter proper fields")
-      }
-        //Get logged in users ID
-      const userId = req.userId
+          // Check whether required fields are provided
+          if(!title || !topic || !type){
+            throw new BadRequest("Please enter proper fields")
+          }
+            //Get logged in users ID
+          const userId = req.userId
 
-      // Check whether the same user already has a material with the same title, topic and type 
-      const existingLearningMaterial = await learningMaterialModel.findOne({userId,title,topic,type})
-      if(existingLearningMaterial){
-        throw new ConflictError("Material with this title already exists")
-      }
+          // Check whether the same user already has a material with the same title, topic and type
+          const existingLearningMaterial = await learningMaterialModel.findOne({userId,title,topic,type})
+          if(existingLearningMaterial){
+            throw new ConflictError("Material with this title already exists")
+          }
 
-      //Create and save new material
-       const newLearningMaterial = await learningMaterialModel.create({
-        userId,
-        title,
-        topic,
-        type
-       })
+          //Create and save new material
+          const newLearningMaterial = await learningMaterialModel.create({
+            userId,
+            title,
+            topic,
+            type,
+            // Add optional fields only if they have a value.
+               // This avoids sending properties with undefined values to MongoDB.
+            ...(description !== undefined && {description}),
+            ...(fileUrl !== undefined && {fileUrl}),
+            ...(fileKey !== undefined && {fileKey}),
+            ...(externalUrl !== undefined && {externalUrl}),
+            ...(tags !== undefined && {tags})
 
-        //Return newly created material
-        return res.status(200).json({
-           success:true,
-           message:"Created Learning Material Successfully",
-           data: newLearningMaterial
-        })
-    }
+
+          })
+
+            //Return newly created material
+            return res.status(200).json({
+              success:true,
+              message:"Created Learning Material Successfully",
+              data: newLearningMaterial
+            })
+        }
 
 
 
 // To fetch all learning material
 
-export const getAllLearningMaterial = async(
-  req:Request,
-  res:Response<ApiResponse<LearningMaterial[]>>
-)=>{
+    export const getAllLearningMaterial = async(
+      req:Request,
+      res:Response<ApiResponse<LearningMaterial[]>>
+    )=>{
         // Check whether the user is logged in
        if(!req.userId){
         throw new UnauthorizedError("Please Login First")
@@ -149,9 +159,27 @@ export const getAllLearningMaterial = async(
        // Get the logged in user's ID
        const userId  = req.userId
        //Find all materials belongs to this user
-       const allLearningMaterials = await learningMaterialModel.find({userId})
 
-       // Return all materials  If there are no materials, data will be an empty array []    
+       const search = req.query.search as string
+       console.log(search);
+
+      const topic = req.query.topic as string
+
+      const tag = req.query.tag as string
+
+       const filter = {
+        userId
+       }
+
+       const allLearningMaterials = await learningMaterialModel.find({
+        userId,
+        title: { $regex: search, $options:"i"},
+        topic:{$regex:topic, $options:"i"},
+        tags:{$regex:tag, $options:"i"}
+
+      }).sort({createdAt:-1})
+
+       // Return all materials  If there are no materials, data will be an empty array []
         return res.status(200).json({
         success:true,
         message: allLearningMaterials.length === 0 ?
@@ -165,37 +193,41 @@ export const getAllLearningMaterial = async(
 
 // Get one learning material
 
-export const getOneMaterial = async(
-  req:Request<{id:string}>,
-  res:Response<ApiResponse<LearningMaterial>>
-)=>{
-      // Check whether the user is logged in
-     if(!req.userId){
-       throw new UnauthorizedError("Please login first")
-     }
-       // Get the logged in user's id
-      const userId = req.userId
+    export const getOneMaterial = async(
+      req:Request<{id:string}>,
+      res:Response<ApiResponse<LearningMaterial>>
+    )=>{
+          // Check whether the user is logged in
+        if(!req.userId){
+          throw new UnauthorizedError("Please login first")
+        }
+          // Get the logged in user's id
+          const userId = req.userId
 
-      // Get the material id from the URL
-      const {id} = req.params
-      //Find materail with this material id of this user
-      const getMaterial = await learningMaterialModel.findOne({
-        _id:id,
-        userId})
-      // Check for existance of the material
-      if(!getMaterial){
-        throw new NotFoundError("Learning Material not found")
-      }
-     // Return that particular material
-     return res.status(200).json({
-      success:true,
-      message:"Material fetched succesfully",
-      data:getMaterial
-     })
-}
+          // Get the material id from the URL
+          const {id} = req.params
+          //Find materail with this material id of this user
+          const getMaterial = await learningMaterialModel.findOne({
+            _id:id,
+            userId})
+          // Check for existance of the material
+          if(!getMaterial){
+            throw new NotFoundError("Learning Material not found")
+          }
+
+          // Generate a fresh S3 URL using the permanent fileKey
+          if(getMaterial.fileKey){
+            getMaterial.fileUrl = await getFileUrl(getMaterial.fileKey)
+          }
 
 
-
+        // Return that particular material
+        return res.status(200).json({
+          success:true,
+          message:"Material fetched succesfully",
+          data:getMaterial
+        })
+    }
 
 
 // Update learning material
@@ -217,7 +249,7 @@ export const updateMaterial = async(
 
        // Get the logged in user's id
      const userId = req.userId
-     
+
        // Get the material id from the URL
      const {id} = req.params
 
@@ -259,7 +291,7 @@ export const updateMaterial = async(
      {
       $set:updateFields
      }
-    ) 
+    )
 
     // Get updated field
     const updatedMaterial = await learningMaterialModel.findOne({
@@ -281,44 +313,410 @@ export const updateMaterial = async(
 }
 
 
-
-
 // Delete material controller
 
-export const deleteMaterial = async(
-  req:Request<{id:string}>,
-  res:Response<ApiResponse<null>>
-)=>{
-  // Check whether the user is logged in
+        export const deleteMaterial = async(
+          req:Request<{id:string}>,
+          res:Response<ApiResponse<null>>
+        )=>{
+          // Check whether the user is logged in
+          if(!req.userId){
+            throw new UnauthorizedError("Please login first")
+          }
+
+          // Get the logged in user's ID
+          const userId = req.userId
+          // Get material id from URL
+          const {id} = req.params
+
+          // Get material with logged in user
+          const material = await learningMaterialModel.findOne({
+            _id:id,
+            userId
+          })
+          // Check for the material is available
+          if(!material){
+            throw new NotFoundError("Material not found")
+          }
+
+          // Delete the file from S3
+          if(material.fileKey){
+            await deleteFromS3(material.fileKey)
+          }
+
+          // Delete material from MongoDB
+          await learningMaterialModel.deleteOne({
+            _id:id,
+            userId
+          })
+
+          // Return status
+          return res.status(200).json({
+            success:true,
+            message:"Material deleted successfully",
+            data:null
+          })
+        }
+
+
+
+
+// Save pin/unpin
+
+    export const togglePinMaterial = async(
+      req:Request<{id:string}>,
+      res:Response<ApiResponse<LearningMaterial>>)=>{
+
+          // Check whether the user is logged in
+           if(!req.userId){
+            throw new UnauthorizedError("Please login first")
+           }
+
+          // Get the logged-in user's id
+           const userId = req.userId;
+
+          // Get the material id from the URL
+           const {id} = req.params
+
+          // Find the material that belongs to the logged-in user
+           const material = await learningMaterialModel.findOne({
+            _id:id,
+            userId
+           })
+
+          // Check whether the material exists
+           if(!material){
+            throw new NotFoundError("Material not found")
+           }
+
+           // Toggle the pin status:- false becomes true and true becomes false
+           material.isPinned = !material.isPinned
+
+          // Save the updated pin status
+           await material.save()
+
+         // Return the updated material
+           return res.status(200).json({
+            success:true,
+            message: material.isPinned ? "Pinned material succcessfully" : "Material unpinned successfully",
+            data:material
+           })
+    }
+
+
+
+
+
+
+    // Upload file controller
+
+    export const uploadFile = async(
+      req:Request,
+      res:Response
+    )=>{
+
+        if(!req.file){
+          throw new BadRequest("Please upload a file")
+        }
+
+        const fileKey = await uploadToS3(req.file)
+
+        const fileUrl = await getFileUrl(fileKey)
+
+        return res.status(200).json({
+          success:true,
+          message:"File uploaded successfully",
+          data:{
+            fileKey,
+            fileUrl
+          }
+        })
+    }
+
+
+
+// Replace with new file
+    export const replaceFile = async(
+      req:Request,
+      res:Response
+    )=>{
+       if(!req.userId){
+        throw new UnauthorizedError("Please login first")
+       }
+
+       // Get the material id from the URL
+       const {id} = req.params
+
+       //Get userId
+       const userId = req.userId
+
+       // Find the material that belongs to logged-in user
+      const material = await learningMaterialModel.findOne({
+        _id : id,
+        userId
+      })
+
+          // Check whether the material exists
+      if(!material){
+        throw new NotFoundError("Material not found")
+      }
+
+      // Check whether a new file was uploaded
+      if(!req.file){
+        throw new BadRequest("Please upload a file")
+      }
+
+      // Delete old file
+      if(material.fileKey){
+        await deleteFromS3(material.fileKey)
+      }
+
+      // Upload new file
+      const newFileKey = await uploadToS3(req.file)
+
+      // Generate a fresh URL for the new file
+      const newFileUrl = await getFileUrl(newFileKey)
+
+      // Update the material with the new file details
+       material.fileKey = newFileKey;
+       material.fileUrl = newFileUrl;
+
+       // Save the updated material
+       await material.save()
+
+
+       // Return the updated material
+        return res.status(200).json({
+            success: true,
+            message: "File replaced successfully",
+            data: material
+        })
+    }
+
+
+
+                              //Notes
+ // Create note
+
+ export const createNote = async(
+  req:Request,
+  res:Response<ApiResponse<Note>>
+ )=>{
+      // Check whether the user is logged in
+      if(!req.userId){
+        throw new UnauthorizedError("Please login first")
+      }
+
+      const {title,topic,content,tags,highlights,isPinned,audioUrl} = req.body
+
+      const userId = req.userId;
+
+    // Check whether required fields are provided
+      if(!title || !topic || !content){
+        throw new BadRequest("Title,topic and content are required")
+      }
+      const existingNote = await noteModel.findOne({
+        userId,
+        title,
+        topic
+      })
+
+      if(existingNote){
+        throw new ConflictError("Note already exists")
+      }
+
+      const newNote = await noteModel.create({
+        userId,
+        title,
+        topic,
+        content,
+        tags,
+        isPinned,
+        highlights,
+        audioUrl
+      })
+
+  return res.status(201).json({
+    success:true,
+    message:"Note successfully created",
+    data:newNote
+  })
+ }
+
+
+ // Get All notes of loggedin user
+ export const getAllNotes = async(
+  req:Request,
+  res:Response<ApiResponse<Note[]>>
+ )=>{
   if(!req.userId){
     throw new UnauthorizedError("Please login first")
   }
 
-  // Get the logged in user's ID
   const userId = req.userId
-  // Get material id from URL
-  const {id} = req.params
+  const notes = await noteModel.find({userId})
 
-  // Get material with logged in user
-  const material = await learningMaterialModel.findOne({
-    _id:id,
-    userId
-  })
-  // Check for the material is available
-  if(!material){
-    throw new NotFoundError("Material not found")
+    // Check whether the user has any notes
+  if(notes.length === 0){
+    throw new NotFoundError("Notes not found")
   }
 
-  // Delete material
-  await learningMaterialModel.deleteOne({
+
+  return res.status(200).json({
+    success:true,
+    message:"Notes fetched successfully",
+    data:notes
+  })
+
+ }
+
+
+ // Get single note
+
+ export const getNote= async(
+  req:Request,
+  res:Response<ApiResponse<Note>>
+ )=>{
+  if(!req.userId){
+    throw new UnauthorizedError("Please login first")
+  }
+
+  const userId = req.userId;
+  const {id} = req.params;
+
+  const note = await noteModel.findOne({
     _id:id,
     userId
   })
 
-  // Return status
+   if(!note){
+    throw new NotFoundError("Note not found")
+   }
+
   return res.status(200).json({
     success:true,
-    message:"Material deleted successfully",
+    message:"Note fetched successfully",
+    data:note
+  })
+ }
+
+
+ // Update note
+
+ export const updateNote= async(
+    req:Request<{id:string}>,
+  res:Response<ApiResponse<Note>>
+ )=>{
+  if(!req.userId){
+    throw new UnauthorizedError("Please login first")
+  }
+
+  const{title,topic,tags,content,isPinned,highlights,audioUrl}=req.body
+  const userId = req.userId;
+  const {id} = req.params;
+
+    if(
+      title === undefined &&
+      topic === undefined &&
+      content === undefined &&
+      tags === undefined &&
+      highlights === undefined &&
+      isPinned === undefined &&
+      audioUrl === undefined
+    ){
+      throw new BadRequest("Please provide at least one field to update")
+    }
+
+
+  const note = await noteModel.findOne({
+    _id:id,
+    userId
+  })
+
+   if(!note){
+    throw new NotFoundError("Note not found")
+   }
+
+   const updatedField:Partial<Note> = {}
+
+      if(title !== undefined){
+    updatedField.title = title
+   }
+
+   if(topic !== undefined){
+    updatedField.topic = topic
+   }
+
+      if(content !== undefined){
+    updatedField.content = content
+   }
+   if(isPinned !== undefined){
+    updatedField.isPinned = isPinned
+   }
+   if(tags !== undefined){
+    updatedField.tags = tags
+   }
+   if(highlights !== undefined){
+    updatedField.highlights = highlights
+   }
+   if(audioUrl !== undefined){
+    updatedField.audioUrl = audioUrl
+   }
+
+ await noteModel.updateOne(
+    {_id:id,userId},
+    {$set: updatedField}
+)
+
+const updatedNote = await noteModel.findOne({
+       _id:id,
+       userId,
+
+})
+
+if(!updatedNote){
+  throw new NotFoundError("Note not found")
+}
+
+  return res.status(200).json({
+    success:true,
+    message:"Note updated successfully",
+    data:updatedNote
+  })
+ }
+
+
+
+ // Delete note
+  export const deleteNote= async(
+  req:Request<{id:string}>,
+  res:Response<ApiResponse<null>>
+ )=>{
+  if(!req.userId){
+    throw new UnauthorizedError("Please login first")
+  }
+
+  const userId = req.userId;
+  const {id} = req.params;
+
+  const note = await noteModel.findOne({
+    _id:id,
+    userId
+  })
+
+   if(!note){
+    throw new NotFoundError("Note not found")
+   }
+
+
+   await noteModel.deleteOne({
+    _id:id,
+    userId
+   })
+
+  return res.status(200).json({
+    success:true,
+    message:"Note deleted successfully",
     data:null
   })
-}
+ }
