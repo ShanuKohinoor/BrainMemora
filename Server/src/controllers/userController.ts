@@ -160,24 +160,21 @@ import type { Note } from "../types/note.types.js"
        const userId  = req.userId
        //Find all materials belongs to this user
 
-       const search = req.query.search as string
-       console.log(search);
+       // Get search, topic, and tag from query parameters.
+       const search = req.query.search as string ?? ""     // if parameter is undefined or null,use " as default"
+       const topic = req.query.topic as string ?? ""
+       const tag = req.query.tag as string ?? ""
 
-      const topic = req.query.topic as string
-
-      const tag = req.query.tag as string
-
-       const filter = {
-        userId
-       }
-
-       const allLearningMaterials = await learningMaterialModel.find({
-        userId,
-        title: { $regex: search, $options:"i"},
-        topic:{$regex:topic, $options:"i"},
-        tags:{$regex:tag, $options:"i"}
-
-      }).sort({createdAt:-1})
+       // Fetch learning materials belongs to the Logged in user
+        const allLearningMaterials = await learningMaterialModel.find({
+          userId,
+          // Add title filter only when a search value is provided
+          ...(search && {title:{$regex:search , $options:"i"}}),
+          // Add topic filter only when a topic value is provided
+          ...(topic && {topic:{$regex:topic, $options:"i"}}),
+          // Add tags filter only when a tag value is provided
+          ...(tag && {tags:{$regex:tag, $options:"i"}})
+        }).sort({createdAt: -1})   // Sort materials by newest first
 
        // Return all materials  If there are no materials, data will be an empty array []
         return res.status(200).json({

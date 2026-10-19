@@ -1,4 +1,4 @@
-interface Quiz{
+export interface Quiz{
     id:string;
     userId:string;
     topic:string;
@@ -9,14 +9,14 @@ interface Quiz{
     updatedAt:Date;
 }
 
-interface QuizQuestion{
+export interface QuizQuestion{
     question:string
     options:string[];
     correctAnswer:string
 
 }
 
-interface QuizSource{
+export interface QuizSource{
     sourceType:string;
     sourceId:string;
 

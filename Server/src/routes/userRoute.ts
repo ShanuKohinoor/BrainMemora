@@ -24,7 +24,7 @@ const router = express.Router()
 
 
 router.get('/profile',verifyUser,getProfile)
-router.put('/profile', verifyUser, updateProfile)
+router.put('/profile', verifyUser,updateProfile)
 
 // Learning Material
 router.post('/learningMaterial',verifyUser,createLearningMaterial)

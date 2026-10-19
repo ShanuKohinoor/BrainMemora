@@ -1,4 +1,4 @@
-interface TeachBack{
+export interface TeachBack{
     id:string;
     userId:string;
     topic:string;

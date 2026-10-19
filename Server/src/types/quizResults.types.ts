@@ -1,4 +1,4 @@
-interface QuizResult{
+export interface QuizResult{
     id:string;
     userId:string;
     quizId:string;

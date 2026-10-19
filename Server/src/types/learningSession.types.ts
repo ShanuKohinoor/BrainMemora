@@ -1,4 +1,4 @@
-interface LearningSession{
+export interface LearningSession{
     id:string;
     userId:string;
     topic:string;

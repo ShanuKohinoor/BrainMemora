@@ -1,4 +1,4 @@
-interface Reminder{
+export interface Reminder{
     id:string;
     userId:string;
     reminderType:string;

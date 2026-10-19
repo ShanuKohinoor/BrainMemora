@@ -11,7 +11,12 @@ import rateLimit from "express-rate-limit"
 const app = express()
 
 // Enable CORS. So the frontend can communicate with the backend
-app.use(cors())
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  })
+);
 
 // Enable security-related HTTP headers
 app.use(helmet());

@@ -1,4 +1,4 @@
-interface Flashcard{
+export interface Flashcard{
     id:string;
     userId:string;
     title:string;
@@ -13,7 +13,7 @@ interface Flashcard{
 
 
 
-interface FlashcardSource{
+export interface FlashcardSource{
     sourceId: string
     sourceType: string
 }

@@ -14,6 +14,7 @@ export const registerUser = async(
     req: Request<{},{},RegisterRequestBody>,
     res: Response<ApiResponse<null>>
 )=>{
+
         // Get registration data from request body
       const { name, email, password } = req.body;
 
@@ -35,7 +36,7 @@ export const registerUser = async(
 
 
        // Create and save the new user
-       const newUser = await UserModel.create({
+        await UserModel.create({
         name, 
         email,
         password: hashedPassword
@@ -53,7 +54,7 @@ export const registerUser = async(
 
   export const loginUser = async (
     req:Request<{},{},LoginRequestBody>,
-    res:Response<ApiResponse<null>>
+    res:Response<ApiResponse<{name:string; email:string}>>
   ) =>{
     const {email,password} = req.body
 
@@ -79,7 +80,11 @@ export const registerUser = async(
        
     return res.status(200).json({
       success:true,
-      message:"Logged in Successfully"
+      message:"Logged in Successfully",
+      data:{
+        name:existingUser.name,
+        email:existingUser.email
+      }
     })
 
   }                      
