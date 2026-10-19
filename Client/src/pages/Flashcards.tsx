@@ -1,7 +1,13 @@
+import { DashboardLayout } from "../components/DashboardLayout"
+
 export default function Flashcards(){
     return(
-        <h1>
-        Welcome to Flashcard Page
-        </h1>
+        <>
+            <DashboardLayout/>
+            <h1>
+            Welcome to Flashcard Page
+            </h1>
+
+        </>
     )
 }

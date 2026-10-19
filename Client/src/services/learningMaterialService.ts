@@ -20,7 +20,7 @@ export const createMaterial = async(data:CreateLearningMaterialBody)=>{
         "/api/user/learningMaterial",
         data
     )
-    return response.data.data
+    return response.data
 }
 
 

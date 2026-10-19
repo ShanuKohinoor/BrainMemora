@@ -1,17 +1,17 @@
 import { Card } from "../components/Card"
 import { useEffect,useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import { Input } from "../components/Input";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
-import { Button } from "../components/Button";
+import { Input } from "../components/Input";
+        
 
+import { DashboardLayout } from "../components/DashboardLayout";
 
 export default function Materials(){    
-
         const [search,setSearch] = useState("")
+
         const [selectedType,setSelectedType] =useState("all")
 
-        const [showForm,setShowForm] = useState(false)
 
         const dispatch = useAppDispatch();
         const {loading,materials,error} = useAppSelector(
@@ -29,25 +29,25 @@ export default function Materials(){
 
     return(
        <>
-       <Button
-         type="button"
-         label="Add Material"
-         onClick={()=>setShowForm(true)}
-        />
-        {showForm && 
+       <DashboardLayout/>
+        {/* {showForm && 
          <div>
             <h2>Add New Material</h2>
          </div>
-        }
+        } */}
+            <div>
+                <Input
+                type="text"
+                value={search}
+                placeholder="Search Materials"
+                onChange={setSearch}
+                />
+
+            </div>
+
         <h1>
           Welcome to Material Page
         </h1>
-        <Input
-          type="text"
-          value={search}
-          placeholder="Search Materials"
-          onChange={setSearch}
-        />
         {loading && <p>Loading....</p>}
 
         {error && <p>{error}</p>}
