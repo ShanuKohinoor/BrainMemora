@@ -56,6 +56,7 @@ export const registerUser = async(
     req:Request<{},{},LoginRequestBody>,
     res:Response<ApiResponse<{name:string; email:string}>>
   ) =>{
+    
     const {email,password} = req.body
 
     const existingUser = await UserModel.findOne({email})
@@ -70,6 +71,7 @@ export const registerUser = async(
     }
 
       const token = createUserToken(existingUser)
+
       res.cookie("userToken",token,{
         httpOnly:true,
         sameSite: "strict",

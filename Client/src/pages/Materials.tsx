@@ -6,11 +6,14 @@ import { Input } from "../components/Input";
         
 
 import { DashboardLayout } from "../components/DashboardLayout";
+import { TopicCard } from "../components/TopicCard";
+import { Button } from "../components/Button";
 
 export default function Materials(){    
         const [search,setSearch] = useState("")
 
         const [selectedType,setSelectedType] =useState("all")
+        const [selectedTopic,setSelectedTopic] = useState("")
 
 
         const dispatch = useAppDispatch();
@@ -22,19 +25,22 @@ export default function Materials(){
           dispatch(fetchLearningMaterials())
         },[dispatch])
 
+        // Get unique topic names for topic card
+        const topics = [...new Set(materials.map((material)=>material.topic))]
+
         const filteredMaterial = materials.filter((material)=>
             material.title.toLowerCase().includes(search.toLowerCase()) &&
-            (selectedType === "all" || material.type === selectedType )
+            (selectedType === "all" || material.type === selectedType ) &&
+            material.topic === selectedTopic
+
         )
 
     return(
        <>
-       <DashboardLayout/>
-        {/* {showForm && 
-         <div>
-            <h2>Add New Material</h2>
-         </div>
-        } */}
+       <DashboardLayout>
+        <Button
+          label="Back button"
+          onClick={()=>setSelectedTopic("")}/>
             <div>
                 <Input
                 type="text"
@@ -62,8 +68,22 @@ export default function Materials(){
             <option value="article">Article</option>
             <option value="notes">Notes</option>
         </select>
+        {selectedTopic === "" ?(
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-2 px-16 py-4">
+            {topics.map((topic)=>(
+                <TopicCard
+                   key={topic}
+                   title={topic}
+                   description={materials.find((item)=>item.topic === topic)?.description}
+                   progress={0}
+                   onOpenMaterials={()=>setSelectedTopic(topic)}
+                   />
+            ))}
+            
+           </div>
+           ):(
 
-        {filteredMaterial.map((material)=>(
+        filteredMaterial.map((material)=>(
           <Card 
              key={material._id}
              title = {material.title}
@@ -73,10 +93,10 @@ export default function Materials(){
              externalUrl={material.externalUrl}
           />
 
-        ))}
+        ))
+    )}
 
-
-
+        </DashboardLayout>
        </> 
        
     )

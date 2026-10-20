@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux"
 import {useNavigate} from "react-router"
 import { Button } from "../components/Button"
 import { Input } from "../components/Input"
-
+import { DashboardLayout } from "../components/DashboardLayout";
 
 // Define the structure of user profile
 type UserProfile = {
@@ -92,6 +92,8 @@ export default function Profile(){
       // Display the users profile after the data is loaded
     return(
         <>
+         <DashboardLayout>
+
           <h1>
             Welcome to Profile Page
           </h1>
@@ -125,6 +127,8 @@ export default function Profile(){
             onClick={handleUpdate}
           />
           {updateError && <p className="text-sm text-red-500">{updateError}</p>}
+        </DashboardLayout>
+
         </>
 
     )
