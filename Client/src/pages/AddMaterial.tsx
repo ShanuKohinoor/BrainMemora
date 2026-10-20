@@ -124,7 +124,15 @@ export default function AddMaterial(){
     <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_250px]">
 
      {/* Upload Files */}
-     <div className="mt-6 rounded-xl border-2 border-dashed border-[#D7C8BB] bg-[#FDF9F5] p-8 text-center">
+     
+     
+     <div className="mt-6 flex flex-col text-center rounded-xl border-2 border-dashed border-[#D7C8BB] bg-[#FDF9F5] p-8 text-center">
+        <p className="text-sm text-[#2D4030]">
+            Drag & drop your file here or click to browse
+        </p>
+        <p className="mt-2 text-xs text-gray-500">
+           Supported: PDF, DOCX, MP4, MP3, PNG, JPG
+        </p>
         <input
            type="file"
            accept=".pdf,.png,.jpg,.jpeg,.mp3,.mp4,.doc,.docx"
@@ -134,7 +142,7 @@ export default function AddMaterial(){
            className="mt-4 block w-full text-sm"
          />
          {file && (
-            <p className="mt-3 text-sm text-sm text-[#2D4030]">
+            <p className="mt-3 w-full max-w-xs text-sm text-sm text-[#2D4030]">
                Selected file: {file.name}
             </p>
          )}
