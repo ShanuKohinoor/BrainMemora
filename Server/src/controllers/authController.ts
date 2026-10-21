@@ -1,7 +1,7 @@
 import type { RegisterRequestBody } from "../types/auth.types.js";
 import type { Request,Response } from "express";
 import { BadRequest,ConflictError,UnauthorizedError } from "../utils/error.js";
-import { UserModel } from "../models/User.js";
+import { UserModel } from "../models/user.js";
 import bcrypt from "bcrypt"
 import type { ApiResponse } from "../types/apiResponse.types.js";
 import type { LoginRequestBody } from "../types/auth.types.js";

@@ -17,6 +17,7 @@ const fileFilter:multer.Options["fileFilter"] = (req,file,cb)=>{
             "audio/wav",
             "audio/ogg",
             "audio/webm",
+            "video/webm",
             "audio/mp4"
       ]
       if(allowedTypes.includes(file.mimetype)){

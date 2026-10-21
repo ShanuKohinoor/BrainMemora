@@ -15,7 +15,9 @@ import {
     getAllNotes,
     getNote,
     updateNote,
-    deleteNote
+    deleteNote,
+    createTeachBack,
+    getAllTeachBacks
 }
     from "../controllers/userController.js"
 import { uploadMiddleware } from "../middlewares/uploadMiddleware.js";
@@ -34,9 +36,6 @@ router.patch('/updateOneMaterial/:id',verifyUser,updateMaterial)
 router.delete('/deleteMaterial/:id',verifyUser,deleteMaterial)
 router.patch('/pinned/:id',verifyUser,togglePinMaterial)
 
-//AWS Cloud
-router.post('/upload',verifyUser,uploadMiddleware.single("file"),uploadFile)
-router.patch('/replaceFile/:id',verifyUser,uploadMiddleware.single("file"),replaceFile)
 
 
 // Notes
@@ -47,5 +46,12 @@ router.patch('/updateNote/:id',verifyUser,updateNote)
 router.delete('/deleteNote/:id',verifyUser,deleteNote)
 
 
+//AWS Cloud
+router.post('/upload',verifyUser,uploadMiddleware.single("file"),uploadFile)
+router.patch('/replaceFile/:id',verifyUser,uploadMiddleware.single("file"),replaceFile)
+
+// TeachBack
+router.post('/createTeachBack',verifyUser,uploadMiddleware.single("file"),createTeachBack)
+router.get('/getAllTeachBack',verifyUser,getAllTeachBacks)
 
 export default router

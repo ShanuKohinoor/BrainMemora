@@ -1,5 +1,5 @@
 import { UserRound,Bell,Menu } from "lucide-react";
-import {  useNavigate } from "react-router";
+import {  useNavigate,useLocation } from "react-router";
 import { Button } from "../components/Button";
 
 // Define the props recieved by the Navbar
@@ -7,8 +7,20 @@ type NavbarProps ={              // Tell typescript what information Navbar comp
    onMenuClick: ()=> void         //  ()- function takes no Argument 
 }                                //   void - Doesn't return a value
 export function Navbar({onMenuClick}:NavbarProps) {       // Recieve sidebar toggle function from dashboardlayout
-     const navigate = useNavigate()
+        const navigate = useNavigate()
+        const location = useLocation();
 
+        const pageTitles: Record<string, string> = {
+            "/dashboard": "Dashboard",
+            "/notes": "My Notes",
+            "/allLearningMaterials": "My Library",
+            "/addMaterial": "My Library",
+            "/quiz": "Quiz Center",
+            "/flashcards": "Flashcards",
+            "/profile": "My Profile",
+        };
+
+const pageTitle = pageTitles[location.pathname] || "BrainMemora";
     return(
         <nav className="
              flex 
@@ -26,8 +38,8 @@ export function Navbar({onMenuClick}:NavbarProps) {       // Recieve sidebar tog
             >
                 <Menu size={24}/>
             </button>
-            <div>
-               BrainMemora Navbar
+           <div className="font-serif text-4xl text-[#2D4030]">
+              {pageTitle}          
             </div>
             <div className="flex items-center gap-3">
                 <button className="text-black" >

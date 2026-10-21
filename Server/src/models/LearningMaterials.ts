@@ -21,7 +21,7 @@ const learningMaterialSchema = new mongoose.Schema<LearningMaterial>({
       },
       type:{
         type:String,
-        enum: ["pdf","audio","video","image","article","notes"],
+        enum: ["pdf","audio","video","image","article","url"],
         required:true
       },
       fileUrl:{                          // Temporary s3 url

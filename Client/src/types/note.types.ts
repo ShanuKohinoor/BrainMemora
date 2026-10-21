@@ -7,6 +7,7 @@ export interface NoteHighlight {
 
 
 export interface Note{
+    _id?: string;
     userId:string;
     title:string;
     topic:string;

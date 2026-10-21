@@ -19,12 +19,11 @@ export function DashboardLayout({children}:DashboardProp){
         <>
          <div className="flex min-h-screen">
            <Sidebar isOpen={isSideBarOpen}/>               {/* Tell the sidebar whether to show or hide */}
-           <div className="flex min-w-0 flex-1 flex-col bg-[#FDF3EC]">
-               <Navbar onMenuClick={handleMenuClick}/>      {/* Allow Navbar to open or close the sidebar */}
+             <div className={`flex min-w-0 flex-1 flex-col bg-[#FDF3EC] ${isSideBarOpen ? "ml-50" : "ml-0"}`}>               <Navbar onMenuClick={handleMenuClick}/>      {/* Allow Navbar to open or close the sidebar */}
                <main className="flex-1">
                   {children}                                {/*Dispaly the current page */}
               </main> 
-            </div>
+             </div>
           </div>
 
         </>

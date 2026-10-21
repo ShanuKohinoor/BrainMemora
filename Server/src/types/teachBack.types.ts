@@ -2,10 +2,11 @@ export interface TeachBack{
     id:string;
     userId:string;
     topic:string;
-    title:string;
+    title?:string;
     sessionId?:string;
     audioUrl:string;
-    duration:number;
+    audioKey:string;
+    duration?:number;
     createdAt:Date;
     updatedAt:Date;
 }

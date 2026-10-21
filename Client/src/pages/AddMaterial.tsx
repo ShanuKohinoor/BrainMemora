@@ -8,7 +8,7 @@ import { DashboardLayout } from "../components/DashboardLayout";
 
 
 
-type TabType = "upload" | "url" | "notes";
+type TabType = "upload" | "url";
 
 
 export default function AddMaterial(){
@@ -20,9 +20,8 @@ export default function AddMaterial(){
     const [type,setType] = useState<MaterialType | "">("")
 
     const [activeTab,setActiveTab] = useState<TabType>("upload")
-    const [file,setFile] = useState<File | null>(null)
+    const [file,setFile] = useState<File | null>(null)         //File:-the TypeScript type representing a browser file, such as a PDF or image.
     const [externalUrl,setExternalUrl] = useState("")
-    const [customNotes,setCustomNotes] = useState("")
 
 
     const [error,setError] = useState("")
@@ -44,7 +43,9 @@ export default function AddMaterial(){
                 title,
                 topic,
                 description,
-                type
+                type,
+                ...(activeTab === "url" && { externalUrl })
+
             })
             setSuccess(response.message)
         }catch(error:any){
@@ -60,7 +61,7 @@ export default function AddMaterial(){
         <DashboardLayout>
 
         <form onSubmit={handleSubmit}
-          className="w-90% rounded-2xl bg-white p-5 shadow-sm md:p-8"
+          className="w-full rounded-2xl bg-white p-5 shadow-sm md:p-8"
         >
          <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
             <div>
@@ -106,50 +107,88 @@ export default function AddMaterial(){
                 <option value="audio">Audio</option>
                 <option value="video">Video</option>
                 <option value="image">Image</option>
+                <option value="url">URL</option>
+
 
             </select>
-            {/* <Input
-              label="Title"
-              type="text"
-              placeholder="Enter a title"
-              value={title}
-              onChange={setTitle}
-              /> */}
-            </div>
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
         {success && <p className="text-sm text-green-700">{success}</p>}
 
      </div>
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_250px]">
+     <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_250px]">
+         <div>
+            {/* Switching Tabs */}
+            <div className="mb-4 flex border-b border-[#D7C8BB]">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("upload")}
+                    className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold ${
+                        activeTab === "upload"
+                            ? "border-[#2D4030] text-[#2D4030]"
+                            : "border-transparent text-[#2D4030]/60"
+                    }`}
+                >
+                    Upload File
+                </button>
 
-     {/* Upload Files */}
-     
-     
-     <div className="mt-6 flex flex-col text-center rounded-xl border-2 border-dashed border-[#D7C8BB] bg-[#FDF9F5] p-8 text-center">
-        <p className="text-sm text-[#2D4030]">
-            Drag & drop your file here or click to browse
-        </p>
-        <p className="mt-2 text-xs text-gray-500">
-           Supported: PDF, DOCX, MP4, MP3, PNG, JPG
-        </p>
-        <input
-           type="file"
-           accept=".pdf,.png,.jpg,.jpeg,.mp3,.mp4,.doc,.docx"
-           onChange={(e)=>{
-            setFile(e.target.files?.[0] ?? null)
-           }}
-           className="mt-4 block w-full text-sm"
-         />
-         {file && (
-            <p className="mt-3 w-full max-w-xs text-sm text-sm text-[#2D4030]">
-               Selected file: {file.name}
-            </p>
-         )}
-     </div>
-         <div className="mt-12 flex flex-col w-full h-12 justify-end gap-6 items-center text-sm sm:flex-row">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("url")}
+                    className={`flex-1 border-b-2 px-4 py-3 text-sm font-semibold ${
+                        activeTab === "url"
+                            ? "border-[#2D4030] text-[#2D4030]"
+                            : "border-transparent text-[#2D4030]/60"
+                    }`}
+                >
+                    URL Link
+                </button>
+            </div>
+           
+            {/* Upload Files */}
+            {activeTab === "upload" && (
 
-            <Button
+            <div className="mt-6 flex flex-col text-center rounded-xl border-2 border-dashed border-[#D7C8BB] bg-[#FDF9F5] p-8 text-center">
+                <p className="text-sm text-[#2D4030]">
+                    Drag & drop your file here or click to browse
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                Supported: PDF, DOCX, MP4, MP3, PNG, JPG
+                </p>
+                <input
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.mp3,.mp4,.doc,.docx"
+                onChange={(e)=>{
+                    setFile(e.target.files?.[0] ?? null)
+                }}
+                className="mt-4 block w-full text-sm"
+                />
+                {file && (
+                    <p className="mt-3 w-full max-w-xs text-sm text-[#2D4030]">
+                    Selected file: {file.name}
+                    </p>
+                )}
+            </div>
+          )}
+          {/* URL Link */}
+          {activeTab === "url" &&(
+            <div>
+                <Input
+                  label="Paste URL"
+                  value={externalUrl}
+                  type="url"
+                  placeholder="Place a link here"
+                  onChange={setExternalUrl}
+                />
+            </div>
+          )}
+
+          </div>
+
+
+          <div className="flex w-full flex items-end justify-center gap-4 pt-8">
+                <Button
                 type="button"
                 label="Cancel"
                 onClick={() => navigate("/allLearningMaterials")}

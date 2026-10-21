@@ -28,10 +28,19 @@ export default function Materials(){
         // Get unique topic names for topic card
         const topics = [...new Set(materials.map((material)=>material.topic))]
 
+        const filteredTopics = topics.filter((topic) =>
+            topic.toLowerCase().includes(search.toLowerCase()) &&
+            (selectedType === "all" ||
+                materials.some((material) =>
+                    material.topic === topic &&
+                    material.type === selectedType
+                ))
+        )
+
         const filteredMaterial = materials.filter((material)=>
             material.title.toLowerCase().includes(search.toLowerCase()) &&
             (selectedType === "all" || material.type === selectedType ) &&
-            material.topic === selectedTopic
+            (selectedTopic === "" || material.topic === selectedTopic)
 
         )
 
@@ -51,9 +60,6 @@ export default function Materials(){
 
             </div>
 
-        <h1>
-          Welcome to Material Page
-        </h1>
         {loading && <p>Loading....</p>}
 
         {error && <p>{error}</p>}
@@ -66,35 +72,59 @@ export default function Materials(){
             <option value="video">Video</option>
             <option value="image">Image</option>
             <option value="article">Article</option>
-            <option value="notes">Notes</option>
+            <option value="url">URL</option>
         </select>
-        {selectedTopic === "" ?(
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-2 px-16 py-4">
-            {topics.map((topic)=>(
+{selectedTopic === "" ? (
+    <>
+        {/* Show matching topic cards */}
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-2 px-16 py-4">
+            {filteredTopics.map((topic) => (
                 <TopicCard
-                   key={topic}
-                   title={topic}
-                   description={materials.find((item)=>item.topic === topic)?.description}
-                   progress={0}
-                   onOpenMaterials={()=>setSelectedTopic(topic)}
-                   />
+                    key={topic}
+                    title={topic}
+                    description={
+                        materials.find((item) => item.topic === topic)?.description
+                    }
+                    progress={0}
+                    onOpenMaterials={() => setSelectedTopic(topic)}
+                />
             ))}
-            
-           </div>
-           ):(
+        </div>
 
-        filteredMaterial.map((material)=>(
-          <Card 
-             key={material._id}
-             title = {material.title}
-             description={material.description}
-             type={material.type}
-             fileUrl={material.fileUrl}
-             externalUrl={material.externalUrl}
-          />
+        {/* Show matching material titles when searching */}
+        {search.trim() !== "" &&
+            filteredMaterial.map((material) => (
+                <Card
+                    key={material._id}
+                    title={material.title}
+                    description={material.description}
+                    type={material.type}
+                    fileUrl={material.fileUrl}
+                    externalUrl={material.externalUrl}
+                />
+            ))}
 
-        ))
-    )}
+        {/* Show a message if nothing matches */}
+        {search.trim() !== "" &&
+            filteredTopics.length === 0 &&
+            filteredMaterial.length === 0 && (
+                <p className="px-16 py-4">
+                    No topics or materials found.
+                </p>
+            )}
+    </>
+) : (
+    filteredMaterial.map((material) => (
+        <Card
+            key={material._id}
+            title={material.title}
+            description={material.description}
+            type={material.type}
+            fileUrl={material.fileUrl}
+            externalUrl={material.externalUrl}
+        />
+    ))
+)}
 
         </DashboardLayout>
        </> 

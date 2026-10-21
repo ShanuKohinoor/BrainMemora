@@ -5,7 +5,7 @@ export type MaterialType =
   | "audio"
   | "image"
   | "article"
-  | "notes";
+  | "url"
 
 // A saved learning material received from the backend
 export interface LearningMaterial {

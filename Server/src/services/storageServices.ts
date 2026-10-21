@@ -12,13 +12,17 @@ const BUCKET_NAME = "brainmemora-learning-files-669492347903-eu-west-2-an"
 
 // Upload a file from the backend to AWS S3
      export const uploadToS3 = async(
-       file:Express.Multer.File
+       file:Express.Multer.File,
+       customKey?:string
      )=>{
+
+        const fileKey = customKey || file.originalname;
+
         const command = new PutObjectCommand({
         // Specify the S3 bucket
         Bucket: BUCKET_NAME,
         // Name used to identify the file inside the bucket
-        Key: file.originalname,
+        Key: fileKey,
         // Actual file data received from Multer
         Body: file.buffer,
         // To tell S3 what type of file is being uploaded
@@ -27,7 +31,7 @@ const BUCKET_NAME = "brainmemora-learning-files-669492347903-eu-west-2-an"
     // Send the upload command to AWS S3
     await s3Client.send(command)
     // Return the uploaded file name
-    return file.originalname
+    return fileKey
 }
 
 

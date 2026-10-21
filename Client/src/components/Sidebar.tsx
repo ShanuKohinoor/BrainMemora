@@ -50,7 +50,7 @@ export function Sidebar({isOpen}:sideBarOpenProps){ // Receive the visibility st
       <>
        {/* Dispaly the sidebar only when it is open */}
         {isOpen && (
-        <aside className="flex min-h-screen w-50 flex-col bg-[#A3B19B] p-4">
+         <aside className="fixed left-0 top-0 z-40 flex h-screen w-50 flex-col overflow-hidden bg-[#A3B19B] p-4">            
             <div className="mb-8 items-center gap-3 px-2 py-2">
                 <span className="text-lg font-bold text-[#2D4030]">
                     BrainMemora
@@ -62,8 +62,8 @@ export function Sidebar({isOpen}:sideBarOpenProps){ // Receive the visibility st
                   to={item.path}
                   className={({isActive})=>
                    isActive
-                   ? "flex items-center gap-3 rounded-lg bg-[#FDF3EC] px-4 py-3 text-[#2D4030]"
-                   : "flex items-center gap-3 rounded-lg px-4 py-3 text-[#2D4030] hover:bg-[#FDF3EC]/50"
+                   ? "flex mt-2 items-center gap-1 rounded-full bg-[#FDF3EC]/80 px-4 py-3 text-[#2D4030]"
+                   : "flex mt-2 items-center gap-1 rounded-full px-4 py-3 bg-[#FDF3EC]/20 text-[#2D4030] hover:bg-[#FDF3EC]/50"
                    }
                 >   
                     <item.icon size={20}/>
@@ -73,7 +73,7 @@ export function Sidebar({isOpen}:sideBarOpenProps){ // Receive the visibility st
             <button
                 type="button"
                 onClick={handleLogout}
-                className="flex items-center gap-3 mt-auto font-bold rounded-lg px-4 py-3 text-left text-[#2D4030] hover:bg-[#FDF3EC]/50"
+                className="flex mb-2 items-center gap-3 mt-5 font-bold rounded-lg px-4 py-3 text-left text-[#2D4030] hover:bg-[#FDF3EC]/50"
                 >
                 <LogOut/>
                 Logout
