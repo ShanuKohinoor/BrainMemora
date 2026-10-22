@@ -1,14 +1,29 @@
 import { UserRound,Bell,Menu } from "lucide-react";
 import {  useNavigate,useLocation } from "react-router";
 import { Button } from "../components/Button";
+import { Input } from "./Input";
+import { useAppDispatch,useAppSelector } from "../app/hooks";
+import { setSearch } from "../features/search/searchSlice";
 
 // Define the props recieved by the Navbar
 type NavbarProps ={              // Tell typescript what information Navbar component is allowed to recieve.(For setting sidebar open & close)
    onMenuClick: ()=> void         //  ()- function takes no Argument 
-}                                //   void - Doesn't return a value
+                                  //   void - Doesn't return a value
+}                             
 export function Navbar({onMenuClick}:NavbarProps) {       // Recieve sidebar toggle function from dashboardlayout
         const navigate = useNavigate()
         const location = useLocation();
+ 
+        // Read current search text from the redux
+        const search = useAppSelector((state)=>state.search.search)
+
+        // Get the function used to dispatch Redux actions
+        const dispatch = useAppDispatch()
+
+        // Update the search text in the Redux
+        const handleSearch = (text:string)=>{
+            dispatch(setSearch(text))
+        }
 
         const pageTitles: Record<string, string> = {
             "/dashboard": "Dashboard",
@@ -41,6 +56,16 @@ const pageTitle = pageTitles[location.pathname] || "BrainMemora";
            <div className="font-serif text-4xl text-[#2D4030]">
               {pageTitle}          
             </div>
+             <div>
+                <Input
+                     type="text"
+                     value={search}
+                     placeholder="Search Materials....."
+                     onChange={handleSearch}
+                />
+            
+             </div>
+            
             <div className="flex items-center gap-3">
                 <button className="text-black" >
                     <Bell size={22} className="text-[#2D4030]" />

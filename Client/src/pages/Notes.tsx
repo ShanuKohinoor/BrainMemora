@@ -483,7 +483,7 @@ export default function Notes() {
     };
 
     return (
-        <DashboardLayout>
+        <DashboardLayout backLabel="Back to MyLibrary" backTo="/allLearningMaterials">
             <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#4A3028] sm:px-6 lg:px-8">
                 {/* Page heading */}
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -493,7 +493,7 @@ export default function Notes() {
                         </p>
 
                         <h1 className="text-3xl font-bold sm:text-4xl">
-                            My Notes
+                            My Learning Materials
                         </h1>
                     </div>
 
@@ -615,7 +615,6 @@ export default function Notes() {
 
                 {/* Topics and their notes */}
                 <section>
-                    <h2 className="mb-4 text-xl font-bold">My Topics</h2>
 
                     {loading && (
                         <p className="mb-4 rounded-xl bg-white p-4 text-sm">
@@ -853,14 +852,11 @@ export default function Notes() {
 
                                     <h2
                                         id="reading-note-title"
-                                        className="break-words text-2xl font-bold leading-tight text-[#603D31] sm:text-3xl"
+                                        className="break-words text-xl font-bold leading-tight text-[#603D31] sm:text-3xl"
                                     >
                                         {viewNote.title}
                                     </h2>
 
-                                    <p className="mt-2 text-sm text-[#92796E]">
-                                        Your learning notes
-                                    </p>
                                 </div>
 
                                 {/* One close option */}

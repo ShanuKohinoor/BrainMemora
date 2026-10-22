@@ -122,7 +122,7 @@ export function LandingPage() {
 
             <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#F5E6DA] to-[#ECD4C4] p-8 aspect-[4/3] flex items-center justify-center">
 
-              <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#F27A58_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              {/* <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#F27A58_1px,transparent_1px)] [background-size:16px_16px]"></div> */}
 
               {/* Play button */}
               <div className="w-16 h-16 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-2xl z-10 cursor-pointer hover:scale-105 transition-transform">

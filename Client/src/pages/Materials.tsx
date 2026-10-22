@@ -2,17 +2,17 @@ import { Card } from "../components/Card"
 import { useEffect,useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
-import { Input } from "../components/Input";
-        
-
+import { ChevronDown } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { TopicCard } from "../components/TopicCard";
-import { Button } from "../components/Button";
 
 export default function Materials(){    
-        const [search,setSearch] = useState("")
 
-        const [selectedType,setSelectedType] =useState("all")
+        // Read shared search from the Redux store
+        const search = useAppSelector((state)=>state.search.search)
+        
+        const [selectedType,setSelectedType] =useState("all")                // Filter by type
+        const [selectedCategory, setSelectedCategory] = useState("all")      // Filter by category
         const [selectedTopic,setSelectedTopic] = useState("")
 
 
@@ -34,46 +34,74 @@ export default function Materials(){
                 materials.some((material) =>
                     material.topic === topic &&
                     material.type === selectedType
-                ))
+                ))&&
+                (selectedCategory  === "all" || selectedCategory === topic)
         )
 
         const filteredMaterial = materials.filter((material)=>
             material.title.toLowerCase().includes(search.toLowerCase()) &&
             (selectedType === "all" || material.type === selectedType ) &&
-            (selectedTopic === "" || material.topic === selectedTopic)
+            (selectedTopic === "" || material.topic === selectedTopic) &&
+            (selectedCategory === "all" || material.topic === selectedCategory)
 
         )
 
     return(
        <>
-       <DashboardLayout>
-        <Button
-          label="Back button"
-          onClick={()=>setSelectedTopic("")}/>
-            <div>
-                <Input
-                type="text"
-                value={search}
-                placeholder="Search Materials"
-                onChange={setSearch}
-                />
-
-            </div>
-
+       <DashboardLayout backLabel="Back to Dashboard" backTo="/dashboard">
         {loading && <p>Loading....</p>}
 
         {error && <p>{error}</p>}
-        <select
-          value={selectedType}
-          onChange={(e)=>setSelectedType(e.target.value)}>
-            <option value="all">All</option>
-            <option value="pdf">PDF</option>
-            <option value="audio">Audio</option>
-            <option value="video">Video</option>
-            <option value="image">Image</option>
-            <option value="article">Article</option>
-            <option value="url">URL</option>
-        </select>
+
+     <div className="flex justify-start items-center gap-3 px-4 py-2">
+
+        {/* Filter by material type */}
+          <div className="relative w-24 shrink-0">
+            <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-24 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
+            >
+                <option value="all" hidden>By Type</option>
+                <option value="all">All</option>
+                <option value="pdf">PDF</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+                <option value="image">Image</option>
+                <option value="article">Article</option>
+                <option value="url">URL</option>
+            </select>
+                    {/* Dropdown arrow */}
+                <ChevronDown
+                    size={16}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
+                />
+         </div>
+
+        {/* Filter by category */}
+            <div className="relative w-30 shrink-0">
+                <select 
+                  value={selectedCategory}
+                  onChange={(e)=>setSelectedCategory(e.target.value)}
+                  className="w-28 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
+                >
+                    <option value="all" hidden>By Category</option>
+                    {topics.map((topic)=>(
+                        <option key={topic} value={topic}>
+                           {topic}
+                        </option>
+
+                    ))}
+                </select>
+                {/* Dropdown arrow */}
+                <ChevronDown
+                    size={16}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
+                />
+            </div>
+
+         </div>
+
 {selectedTopic === "" ? (
     <>
         {/* Show matching topic cards */}

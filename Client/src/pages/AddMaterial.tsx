@@ -58,7 +58,7 @@ export default function AddMaterial(){
 
     return(
         <>
-        <DashboardLayout>
+        <DashboardLayout backLabel="Back to Library" backTo="/allLearningMaterials">
 
         <form onSubmit={handleSubmit}
           className="w-full rounded-2xl bg-white p-5 shadow-sm md:p-8"

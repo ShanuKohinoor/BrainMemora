@@ -3,13 +3,15 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../features/auth/authSlice"
 import learningMaterialReducer from "../features/learningMaterials/learningMaterialSlice"
 import noteReducer from "../features/notes/noteSlice"
+import searchReducer from "../features/search/searchSlice"
 
 // Create the Redux store
 export const store = configureStore({
     reducer:{
        auth:authReducer,
        learningMaterials: learningMaterialReducer,
-       notes: noteReducer
+       notes: noteReducer,
+       search: searchReducer
     }
 })
 
