@@ -130,6 +130,42 @@ export const getOneFlashCard = async(
 }
 
 
+// Update Flashcard
+export const updateFlashCard =async(
+    req:Request<{id:string}>,
+    res:Response
+)=>{
+
+      if(!req.userId){
+        throw new UnauthorizedError("Please login first")
+      }
+
+      const {topic,title,sources,question,answer} = req.body;
+
+      const userId = req.userId;
+      const {id} = req.params
+
+    //   Find flashcard
+      const updateFlashcard = await flashcardModel.findOneAndUpdate(
+        {_id:id,userId},
+        {topic,title,sources,question,answer},
+        {new:true,runValidators:true}
+      )
+
+      // Check for the existence
+     if(!updateFlashcard){
+        throw new NotFoundError("Flashcard not found")
+     }
+
+
+         res.status(200).json({
+        success:true,
+        message:"Flashcard  updated successfully",
+        data: updateFlashcard
+     })
+
+}
+
 // To delete flashcard
 export const deleteFlashCard = async(
     req:Request<{id:string}>,
