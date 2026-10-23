@@ -149,7 +149,7 @@ export const updateFlashCard =async(
       const updateFlashcard = await flashcardModel.findOneAndUpdate(
         {_id:id,userId},
         {topic,title,sources,question,answer},
-        {new:true,runValidators:true}
+        { returnDocument: "after", runValidators: true }
       )
 
       // Check for the existence

@@ -11,7 +11,7 @@ export const getAllNotes = async () => {
 // Create a note
 export const createNote = async (data: Note) => {
     const response = await api.post(
-        "/api/user/createNote",
+        "/api/note/createNote",
         data
     );
     return response.data;
@@ -23,7 +23,7 @@ export const updateNote = async (
     data: Partial<Note>
 ) => {
     const response = await api.patch(
-        `/api/user/updateNote/${id}`,
+        `/api/note/updateNote/${id}`,
         data
     );
     return response.data;
@@ -32,7 +32,7 @@ export const updateNote = async (
 // Delete a note
 export const deleteNote = async (id: string) => {
     const response = await api.delete(
-        `/api/user/deleteNote/${id}`
+        `/api/note/deleteNote/${id}`
     );
     return response.data;
 };

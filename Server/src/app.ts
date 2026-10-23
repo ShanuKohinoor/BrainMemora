@@ -6,6 +6,10 @@ import cookieParser from "cookie-parser";
 import { errorHandlingMiddleware } from "./middlewares/errorHandling.js";
 import authRoute from "./routes/authRoute.js"
 import userRoute from "./routes/userRoute.js"
+import learningMaterialRoute from "./routes/learningMaterialRoute.js"
+import noteRoute from "./routes/noteRoute.js"
+import cloudRoute from "./routes/cloudRoute.js"
+import teachBackRoute from "./routes/teachBack.js"
 import flashcardRoute from "./routes/flashcardRoute.js"
 import rateLimit from "express-rate-limit"
 
@@ -48,8 +52,22 @@ app.use("/api/auth",authRoute)
 //Connect User route
 app.use("/api/user",userRoute)
 
+// Connect LearningMaterial route
+app.use("/api/material",learningMaterialRoute)
+
+//Connect Note route
+app.use("/api/note",noteRoute)
+
+//Connect upload in cloud route
+app.use("/api/upload",cloudRoute)
+
+//Connect teachBack route
+app.use("/api/teachBack",teachBackRoute)
+
+
 // Connect Flashcard route
 app.use("/api/flashcard",flashcardRoute)
+
 // Connect ErrorHandling Middleware
 app.use(errorHandlingMiddleware)
 

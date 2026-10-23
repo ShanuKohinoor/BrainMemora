@@ -17,7 +17,7 @@ export const getAllLearningMaterials = async()=>{
 // Create material 
 export const createMaterial = async(data:CreateLearningMaterialBody)=>{
     const response = await api.post(
-        "/api/user/learningMaterial",
+        "/api/material/learningMaterial",
         data
     )
     return response.data
@@ -27,7 +27,7 @@ export const createMaterial = async(data:CreateLearningMaterialBody)=>{
 // // Update Material
 // export const updateMaterial  = async()=>{
 //     const response = await api.post(
-//         "/api/user/updateOneMaterial"
+//         "/api/material/updateOneMaterial"
 //     )
 //     return response.data.data
 // }
