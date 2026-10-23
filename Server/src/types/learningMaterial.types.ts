@@ -1,5 +1,5 @@
 // Allowed types of learning materials
-export type MaterialType = "pdf" | "video" | "audio" | "image" |"article" | "notes"
+export type MaterialType = "pdf" | "video" | "audio" | "image" |"article"
 
 
 // Complete Learning Material stored in the database

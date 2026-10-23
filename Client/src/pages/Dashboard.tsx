@@ -3,7 +3,7 @@ import { DashboardLayout } from "../components/DashboardLayout"
 export default function Dashboard(){
     return(
         <>
-        <DashboardLayout>
+        <DashboardLayout backLabel="Back to HomePage" backTo="/">
         <h1>
           Welcome to Dashboard Page
         </h1>

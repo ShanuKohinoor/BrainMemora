@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import { errorHandlingMiddleware } from "./middlewares/errorHandling.js";
 import authRoute from "./routes/authRoute.js"
 import userRoute from "./routes/userRoute.js"
+import flashcardRoute from "./routes/flashcardRoute.js"
 import rateLimit from "express-rate-limit"
 
 const app = express()
@@ -46,6 +47,9 @@ app.use("/api/auth",authRoute)
 
 //Connect User route
 app.use("/api/user",userRoute)
+
+// Connect Flashcard route
+app.use("/api/flashcard",flashcardRoute)
 // Connect ErrorHandling Middleware
 app.use(errorHandlingMiddleware)
 
