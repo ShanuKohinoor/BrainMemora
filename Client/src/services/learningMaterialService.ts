@@ -24,7 +24,7 @@ export const createMaterial = async(data:CreateLearningMaterialBody)=>{
 }
 
 
-// // Update Material
+//  Update Material
 // export const updateMaterial  = async()=>{
 //     const response = await api.post(
 //         "/api/material/updateOneMaterial"

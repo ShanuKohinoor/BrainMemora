@@ -2,7 +2,7 @@
 
 import type { Request,Response } from "express"
 import { UserModel } from "../models/user.js"
-import { UnauthorizedError,NotFoundError, ConflictError, BadRequest } from "../utils/error.js"
+import { UnauthorizedError,NotFoundError, ConflictError } from "../utils/error.js"
 import type { ApiResponse } from "../types/apiResponse.types.js"
 import type { User } from "../types/user.types.js"
 

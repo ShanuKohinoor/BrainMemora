@@ -30,6 +30,7 @@ import { learningMaterialModel } from "../models/learningMaterials.js"
     }
 
 
+    
 
 // Replace with new file
     export const replaceFile = async(
@@ -79,7 +80,6 @@ import { learningMaterialModel } from "../models/learningMaterials.js"
 
        // Save the updated material
        await material.save()
-
 
        // Return the updated material
         return res.status(200).json({

@@ -13,6 +13,7 @@ import teachBackRoute from "./routes/teachBack.js"
 import flashcardRoute from "./routes/flashcardRoute.js"
 import rateLimit from "express-rate-limit"
 
+
 const app = express()
 
 // Enable CORS. So the frontend can communicate with the backend

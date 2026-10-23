@@ -2,11 +2,15 @@
 import { api } from "./api";
 import type { Note } from "../types/note.types";
 
+
+
 // Fetch all notes
 export const getAllNotes = async () => {
     const response = await api.get("/api/user/getAllNotes");
     return response.data.data;
 };
+
+
 
 // Create a note
 export const createNote = async (data: Note) => {
@@ -16,6 +20,8 @@ export const createNote = async (data: Note) => {
     );
     return response.data;
 };
+
+
 
 // Update a note
 export const updateNote = async (
@@ -28,6 +34,8 @@ export const updateNote = async (
     );
     return response.data;
 };
+
+
 
 // Delete a note
 export const deleteNote = async (id: string) => {

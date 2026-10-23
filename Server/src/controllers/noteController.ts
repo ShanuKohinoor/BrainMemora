@@ -3,8 +3,6 @@
    import { UnauthorizedError,NotFoundError, ConflictError, BadRequest } from "../utils/error.js"
    import { noteModel } from "../models/notes.js"
    import type { Note } from "../types/note.types.js"
-   import { teachBackModel } from "../models/teachBack.js";
-   import type { TeachBack } from "../types/teachBack.types.js";
    import type { ApiResponse } from "../types/apiResponse.types.js"
                               
                               
@@ -69,8 +67,6 @@
 
   const userId = req.userId
   const notes = await noteModel.find({userId}).sort({updatedAt:-1})
-
-
 
   return res.status(200).json({
     success:true,

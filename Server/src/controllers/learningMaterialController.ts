@@ -2,9 +2,7 @@ import type { Request,Response } from "express"
 import { UnauthorizedError,NotFoundError, ConflictError, BadRequest } from "../utils/error.js"
 import type { LearningMaterial,CreateLearningMaterialBody } from "../types/learningMaterial.types.js"
 import { learningMaterialModel } from "../models/learningMaterials.js"
-import { uploadToS3, getFileUrl, deleteFromS3 } from "../services/storageServices.js"
-import { teachBackModel } from "../models/teachBack.js";
-import type { TeachBack } from "../types/teachBack.types.js";
+import { getFileUrl, deleteFromS3 } from "../services/storageServices.js"
 import type { ApiResponse } from "../types/apiResponse.types.js"
 
 
