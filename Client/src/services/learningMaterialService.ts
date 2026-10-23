@@ -5,7 +5,7 @@ import type { CreateLearningMaterialBody } from "../types/learningMaterial.types
 // Fetch all learning materials from the backend.
 export const getAllLearningMaterials = async()=>{
     // SEnd a GET request to the backend
-    const response =await api.get("/api/user/allLearningMaterials")
+    const response =await api.get("/api/material/allLearningMaterials")
     // Return the learning materials from the response
     return response.data.data
 }

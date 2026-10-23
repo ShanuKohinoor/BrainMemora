@@ -493,7 +493,7 @@ export default function Notes() {
                         </p>
 
                         <h1 className="text-3xl font-bold sm:text-4xl">
-                            My Learning Materials
+                            My Own Notes
                         </h1>
                     </div>
 
@@ -514,24 +514,9 @@ export default function Notes() {
                         </h2>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
+                                                        <div>
                                 <label className="mb-2 block text-sm font-semibold">
-                                    Note title
-                                </label>
-
-                                <input
-                                    value={title}
-                                    onChange={(event) =>
-                                        setTitle(event.target.value)
-                                    }
-                                    placeholder="e.g. useState"
-                                    className="w-full rounded-xl border border-[#E8D7CB] bg-[#FFFCFA] px-4 py-3 outline-none focus:border-[#F27A58]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-sm font-semibold">
-                                    Main topic
+                                    Note topic
                                 </label>
 
                                 <input
@@ -553,6 +538,22 @@ export default function Notes() {
                                     ))}
                                 </datalist>
                             </div>
+
+                            <div>
+                                <label className="mb-2 block text-sm font-semibold">
+                                    Note title
+                                </label>
+
+                                <input
+                                    value={title}
+                                    onChange={(event) =>
+                                        setTitle(event.target.value)
+                                    }
+                                    placeholder="e.g. useState"
+                                    className="w-full rounded-xl border border-[#E8D7CB] bg-[#FFFCFA] px-4 py-3 outline-none focus:border-[#F27A58]"
+                                />
+                            </div>
+
                         </div>
 
                         <div className="mt-4">
@@ -684,9 +685,6 @@ export default function Notes() {
                                     <div className="space-y-5 p-5">
                                         {/* Notes belonging to this topic */}
                                         <section>
-                                            <h4 className="mb-3 font-bold text-[#94513C]">
-                                                Learning Notes
-                                            </h4>
 
                                             {topicNotes.length === 0 && (
                                                 <p className="rounded-lg bg-[#FCF7F3] p-3 text-sm text-[#92796E]">

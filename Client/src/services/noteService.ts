@@ -6,7 +6,7 @@ import type { Note } from "../types/note.types";
 
 // Fetch all notes
 export const getAllNotes = async () => {
-    const response = await api.get("/api/user/getAllNotes");
+    const response = await api.get("/api/note/getAllNotes");
     return response.data.data;
 };
 

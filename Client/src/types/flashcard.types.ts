@@ -1,5 +1,5 @@
 export interface Flashcard{
-    id:string;
+    _id:string;
     userId:string;
     title:string;
     topic:string;
