@@ -1,5 +1,5 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Plus,
   BookOpen,
@@ -13,35 +13,31 @@ import {
 } from "lucide-react";
 
 import { DashboardLayout } from "../components/DashboardLayout";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
 
-// The information stored for each flashcard.
-type Flashcard = {
+import { fetchNotes } from "../features/notes/noteSlice";
+import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
+
+import {
+  getAllFlashcards,
+  createFlashcard,
+  deleteFlashcard,
+} from "../services/flashCardService";
+
+import type {
+  Flashcard,
+  FlashcardBody,
+} from "../types/flashcard.types";
+
+// A source that the user can select when creating a flashcard.
+type SourceOption = {
   id: string;
+  title: string;
   topic: string;
-  question: string;
-  answer: string;
+  sourceType: "note" | "learningMaterial";
 };
 
-// The topics shown on the Flashcards page.
-const initialTopics = [
-  {
-    name: "MongoDB",
-    description: "Database concepts and queries",
-    color: "#E8EDE2",
-  },
-  {
-    name: "React",
-    description: "Components, hooks and state",
-    color: "#FCE6DC",
-  },
-  {
-    name: "MERN Interview",
-    description: "Full-stack interview preparation",
-    color: "#EDE9F5",
-  },
-];
-
-// Different colors used for the study cards.
+// Colors used for the question and answer sides.
 const cardColors = [
   "#2D4030",
   "#F27A58",
@@ -52,74 +48,160 @@ const cardColors = [
 ];
 
 export default function Flashcards() {
-  // Controls whether the create form is open.
+  const dispatch = useAppDispatch();
+
+  // Get notes and learning materials from Redux.
+  const notes = useAppSelector((state) => state.notes.notes);
+  const materials = useAppSelector(
+    (state) => state.learningMaterials.materials
+  );
+
+  // Controls the create form.
   const [showForm, setShowForm] = useState(false);
 
-  // Stores the question, answer and selected topic.
+  // Stores the selected source and question-and-answer text.
+  const [selectedSourceId, setSelectedSourceId] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState("");
 
-  // Stores flashcards created while this page is open.
+  // Stores flashcards retrieved from the backend.
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
 
   // Stores the topic currently being studied.
   const [viewTopic, setViewTopic] = useState<string | null>(null);
 
-  // Tracks which flashcard is currently displayed.
+  // Tracks the current card and which side is visible.
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-
-  // Controls whether the question or answer is visible.
   const [isFlipped, setIsFlipped] = useState(false);
 
-  // Gets the flashcards belonging to the selected topic.
+  // Controls loading and error messages.
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Load the user's notes, materials and saved flashcards.
+  useEffect(() => {
+    dispatch(fetchNotes());
+    dispatch(fetchLearningMaterials());
+
+    async function loadFlashcards() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const savedCards = await getAllFlashcards();
+        setFlashcards(savedCards ?? []);
+      } catch {
+        setErrorMessage("Unable to load flashcards. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadFlashcards();
+  }, [dispatch]);
+
+  // Convert existing notes and materials into selectable sources.
+  const sources: SourceOption[] = [
+    ...notes
+      .filter((note) => note._id)
+      .map((note) => ({
+        id: note._id!,
+        title: note.title,
+        topic: note.topic,
+        sourceType: "note" as const,
+      })),
+
+    ...materials
+      .filter((material) => material._id)
+      .map((material) => ({
+        id: material._id,
+        title: material.title,
+        topic: material.topic,
+        sourceType: "learningMaterial" as const,
+      })),
+  ];
+
+  // Find the source selected in the create form.
+  const selectedSource = sources.find(
+    (source) => source.id === selectedSourceId
+  );
+
+  // Build the topic list from the user's real sources and flashcards.
+  const topicNames = Array.from(
+    new Set([
+      ...sources.map((source) => source.topic),
+      ...flashcards.map((card) => card.topic),
+    ])
+  ).filter(Boolean);
+
+  // Get the flashcards belonging to the selected topic.
   const topicFlashcards = flashcards.filter(
     (card) => card.topic === viewTopic
   );
 
-  // Gets the current flashcard.
+  // Get the current flashcard.
   const currentCard = topicFlashcards[currentCardIndex];
 
-  // Saves a new flashcard.
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  // Save a flashcard to the backend.
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // Do not save an incomplete flashcard.
-    if (!selectedTopic || !question.trim() || !answer.trim()) {
+    if (!selectedSource || !question.trim() || !answer.trim()) {
+      setErrorMessage("Please select a source and complete both fields.");
       return;
     }
 
-    // Create the new question-and-answer object.
-    const newCard: Flashcard = {
-      id: crypto.randomUUID(),
-      topic: selectedTopic,
+    const flashcardData: FlashcardBody = {
+      topic: selectedSource.topic,
       question: question.trim(),
       answer: answer.trim(),
+      sources: [
+        {
+          sourceId: selectedSource.id,
+          sourceType: selectedSource.sourceType,
+        },
+      ],
     };
 
-    // Add the new card to the existing cards.
-    setFlashcards((previousCards) => [...previousCards, newCard]);
+    try {
+      setIsSaving(true);
+      setErrorMessage("");
 
-    // Clear the form after saving.
-    setQuestion("");
-    setAnswer("");
-    setSelectedTopic("");
-    setShowForm(false);
+      // Save the card and add the returned record to the page.
+      const savedCard = await createFlashcard(flashcardData);
+
+      setFlashcards((previousCards) => [
+        ...previousCards,
+        savedCard,
+      ]);
+
+      // Clear the form after a successful save.
+      setQuestion("");
+      setAnswer("");
+      setSelectedSourceId("");
+      setShowForm(false);
+    } catch {
+      setErrorMessage("Unable to save the flashcard. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  // Opens a topic and starts with its first flashcard.
+  // Open a topic and show its first flashcard.
   function handleViewTopic(topicName: string) {
     setViewTopic(topicName);
     setCurrentCardIndex(0);
     setIsFlipped(false);
+    setErrorMessage("");
   }
 
-  // Flips the card between the question and answer.
+  // Flip between the question and answer.
   function handleFlip() {
     setIsFlipped((previousValue) => !previousValue);
   }
 
-  // Moves to the next flashcard.
+  // Move to the next flashcard.
   function handleNextCard() {
     if (currentCardIndex < topicFlashcards.length - 1) {
       setCurrentCardIndex((previousIndex) => previousIndex + 1);
@@ -127,7 +209,7 @@ export default function Flashcards() {
     }
   }
 
-  // Moves to the previous flashcard.
+  // Move to the previous flashcard.
   function handlePreviousCard() {
     if (currentCardIndex > 0) {
       setCurrentCardIndex((previousIndex) => previousIndex - 1);
@@ -135,11 +217,39 @@ export default function Flashcards() {
     }
   }
 
-  // Closes the study window.
+  // Close the study window.
   function handleCloseStudy() {
     setViewTopic(null);
     setCurrentCardIndex(0);
     setIsFlipped(false);
+  }
+
+  // Delete a saved flashcard.
+  async function handleDeleteCard(card: Flashcard) {
+    if (!card._id) {
+      setErrorMessage("This flashcard has no valid ID.");
+      return;
+    }
+
+    try {
+      await deleteFlashcard(card._id);
+
+      setFlashcards((previousCards) =>
+        previousCards.filter((item) => item._id !== card._id)
+      );
+
+      // Keep the selected index within the remaining cards.
+      setCurrentCardIndex((previousIndex) =>
+        Math.min(
+          previousIndex,
+          Math.max(topicFlashcards.length - 2, 0)
+        )
+      );
+
+      setIsFlipped(false);
+    } catch {
+      setErrorMessage("Unable to delete the flashcard. Please try again.");
+    }
   }
 
   return (
@@ -148,31 +258,32 @@ export default function Flashcards() {
       backTo="/allLearningMaterials"
     >
       <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6 lg:px-8">
-
         {/* Page heading */}
-          <p className="text-xl font-bold sm:text-3xl mb-5">
-                Flip, discover, and remember what you learn.
+        <p className="mb-5 text-xl font-bold sm:text-3xl">
+          Flip, discover, and remember what you learn.
+        </p>
 
-          </p>
-
+        {/* Display backend errors */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mb-5 rounded-xl border border-red-200 bg-white p-3 text-sm text-red-700"
+          >
+            {errorMessage}
+          </div>
+        )}
 
         {/* Create panel and topic list */}
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-
           {/* Create flashcards panel */}
           <section className="rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm sm:p-6">
-
-            {/* Colorful bundle of tall flashcards */}
+            {/* Decorative stack of cards */}
             <div className="mb-6 flex h-24 w-28 items-center justify-center">
               <div className="relative h-24 w-24">
-
-                {/* Back card */}
                 <div className="absolute left-8 top-1 h-[76px] w-[54px] rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#A3B19B] shadow-sm" />
 
-                {/* Middle card */}
                 <div className="absolute left-3 top-2 h-[76px] w-[54px] -rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#F27A58] shadow-sm" />
 
-                {/* Front card */}
                 <div className="absolute left-5 top-3 flex h-[76px] w-[54px] flex-col items-center justify-center rounded-xl border border-[#2D4030]/10 bg-[#E8EDE2] shadow-md">
                   <BookOpen
                     size={22}
@@ -180,22 +291,17 @@ export default function Flashcards() {
                     className="text-[#2D4030]"
                   />
 
-                  {/* Small lines to resemble text on a card */}
                   <div className="mt-3 space-y-1.5">
                     <div className="h-1 w-6 rounded-full bg-[#2D4030]/50" />
                     <div className="h-1 w-8 rounded-full bg-[#2D4030]/30" />
                     <div className="h-1 w-5 rounded-full bg-[#2D4030]/30" />
                   </div>
                 </div>
-
               </div>
             </div>
 
-            <h2 className="text-xl font-bold">
-              Create Flashcards
-            </h2>
+            <h2 className="text-xl font-bold">Create Flashcards</h2>
 
-            {/* Short explanation of how flashcards work */}
             <div className="my-6 rounded-xl bg-[#FDF3EC] p-4">
               <div className="flex items-start gap-3">
                 <BookOpen
@@ -204,21 +310,21 @@ export default function Flashcards() {
                 />
 
                 <div>
-                  <p className="text-sm font-semibold">
-                    Flip to remember
-                  </p>
+                  <p className="text-sm font-semibold">Flip to remember</p>
                   <p className="mt-1 text-xs leading-5 text-[#74675F]">
-                    Read a question, think of the answer,
-                    and flip the card to check yourself.
+                    Read a question, think of the answer, and flip the card
+                    to check yourself.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Opens the create form */}
             <button
               type="button"
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setErrorMessage("");
+                setShowForm(true);
+              }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2D4030] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#405743]"
             >
               <Plus size={18} />
@@ -226,60 +332,79 @@ export default function Flashcards() {
             </button>
           </section>
 
-          {/* Topic cards */}
+          {/* Topics generated from the user's data */}
           <section className="min-w-0">
+            <p className="mb-5 text-xl font-semibold sm:text-2xl">
+              Choose a topic to start revising.
+            </p>
 
-              <p className="text-xl font-semibold sm:text-2xl mb-5">
-                Choose a topic to start revising.
+            {isLoading ? (
+              <p className="rounded-xl bg-white p-5 text-sm text-[#74675F]">
+                Loading your flashcards...
               </p>
+            ) : topicNames.length === 0 ? (
+              <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6">
+                <h3 className="font-bold">No topics yet</h3>
+                <p className="mt-2 text-sm leading-6 text-[#74675F]">
+                  Add a note or learning material first. Its topic will appear
+                  here so you can create linked flashcards.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+                {topicNames.map((topicName, index) => {
+                  // Count saved flashcards for this topic.
+                  const cardCount = flashcards.filter(
+                    (card) => card.topic === topicName
+                  ).length;
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3">
-              {initialTopics.map((topic) => {
-                // Counts flashcards for this topic.
-                const cardCount = flashcards.filter(
-                  (card) => card.topic === topic.name
-                ).length;
+                  // Find a source to show a description for the topic.
+                  const topicSource = sources.find(
+                    (source) => source.topic === topicName
+                  );
 
-                return (
-                  <article
-                    key={topic.name}
-                    className="flex min-h-[220px] flex-col rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                  >
-                    {/* Topic icon */}
-                    <div
-                      className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
-                      style={{ backgroundColor: topic.color }}
+                  return (
+                    <article
+                      key={topicName}
+                      className="flex min-h-[220px] flex-col rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
                     >
-                      <Layers size={23} />
-                    </div>
-
-                    <h3 className="text-lg font-bold">
-                      {topic.name}
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-5 text-[#74675F]">
-                      {topic.description}
-                    </p>
-
-                    {/* Card count and View button */}
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-6">
-                      <span className="rounded-full bg-[#E8EDE2] px-3 py-1.5 text-xs font-semibold text-[#2D4030]">
-                        {cardCount} {cardCount === 1 ? "card" : "cards"}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleViewTopic(topic.name)}
-                        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC]"
+                      <div
+                        className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
+                        style={{
+                          backgroundColor:
+                            cardColors[(index + 2) % cardColors.length],
+                        }}
                       >
-                        View
-                        <ArrowRight size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                        <Layers size={23} />
+                      </div>
+
+                      <h3 className="text-lg font-bold">{topicName}</h3>
+
+                      <p className="mt-2 text-sm leading-5 text-[#74675F]">
+                        {topicSource
+                          ? topicSource.title
+                          : "Your saved flashcards"}
+                      </p>
+
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-6">
+                        <span className="rounded-full bg-[#E8EDE2] px-3 py-1.5 text-xs font-semibold text-[#2D4030]">
+                          {cardCount} {cardCount === 1 ? "card" : "cards"}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleViewTopic(topicName)}
+                          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC]"
+                        >
+                          View
+                          <ArrowRight size={16} />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
 
@@ -294,15 +419,12 @@ export default function Flashcards() {
             >
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                  <h2
-                    id="create-title"
-                    className="text-2xl font-bold"
-                  >
+                  <h2 id="create-title" className="text-2xl font-bold">
                     Create Flashcard
                   </h2>
 
                   <p className="mt-2 text-sm text-[#74675F]">
-                    Add a question and its answer.
+                    Choose a source, then add a question and answer.
                   </p>
                 </div>
 
@@ -317,34 +439,57 @@ export default function Flashcards() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-
-                {/* Select a topic */}
+                {/* Choose a real note or learning material */}
                 <div>
                   <label
-                    htmlFor="topic"
+                    htmlFor="source"
                     className="mb-2 block text-sm font-semibold"
                   >
-                    Topic
+                    Source
                   </label>
 
                   <select
-                    id="topic"
-                    value={selectedTopic}
+                    id="source"
+                    value={selectedSourceId}
                     onChange={(event) =>
-                      setSelectedTopic(event.target.value)
+                      setSelectedSourceId(event.target.value)
                     }
                     required
                     className="w-full rounded-xl border border-[#D7C8BB] bg-white px-4 py-3 text-sm outline-none focus:border-[#2D4030]"
                   >
-                    <option value="">Select a topic</option>
+                    <option value="">Select a note or material</option>
 
-                    {initialTopics.map((topic) => (
-                      <option key={topic.name} value={topic.name}>
-                        {topic.name}
+                    {sources.map((source) => (
+                      <option
+                        key={`${source.sourceType}-${source.id}`}
+                        value={source.id}
+                      >
+                        {source.title} — {source.topic} (
+                        {source.sourceType === "note"
+                          ? "Note"
+                          : "Learning Material"}
+                        )
                       </option>
                     ))}
                   </select>
+
+                  {sources.length === 0 && (
+                    <p className="mt-2 text-xs leading-5 text-[#74675F]">
+                      No sources are available. Create a note or learning
+                      material first.
+                    </p>
+                  )}
                 </div>
+
+                {/* Show the selected source's topic */}
+                {selectedSource && (
+                  <div className="rounded-xl bg-[#E8EDE2] p-3">
+                    <p className="text-xs text-[#74675F]">Topic</p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {selectedSource.topic}
+                    </p>
+                  </div>
+                )}
 
                 {/* Enter the question */}
                 <div>
@@ -398,9 +543,10 @@ export default function Flashcards() {
 
                   <button
                     type="submit"
-                    className="rounded-xl bg-[#F27A58] px-5 py-3 text-sm font-semibold text-[#2D4030] transition hover:bg-[#E96847]"
+                    disabled={isSaving || sources.length === 0}
+                    className="rounded-xl bg-[#F27A58] px-5 py-3 text-sm font-semibold text-[#2D4030] transition hover:bg-[#E96847] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Save Flashcard
+                    {isSaving ? "Saving..." : "Save Flashcard"}
                   </button>
                 </div>
               </form>
@@ -424,10 +570,7 @@ export default function Flashcards() {
                     BrainMemora · Revision
                   </p>
 
-                  <h2
-                    id="study-title"
-                    className="mt-1 text-2xl font-bold"
-                  >
+                  <h2 id="study-title" className="mt-1 text-2xl font-bold">
                     {viewTopic}
                   </h2>
                 </div>
@@ -442,30 +585,35 @@ export default function Flashcards() {
                 </button>
               </div>
 
-              {/* Show a message when the topic has no cards */}
+              {/* Show an empty state when this topic has no cards */}
               {topicFlashcards.length === 0 ? (
                 <div className="rounded-2xl border border-[#D7C8BB] bg-white px-5 py-12 text-center">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8EDE2]">
                     <Layers size={27} />
                   </div>
 
-                  <h3 className="text-lg font-bold">
-                    No flashcards yet
-                  </h3>
+                  <h3 className="text-lg font-bold">No flashcards yet</h3>
 
                   <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#74675F]">
-                    Create a question and answer for this topic.
-                    Your cards will appear here.
+                    Create a question and answer linked to a source in this
+                    topic.
                   </p>
 
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedTopic(viewTopic);
-                      setShowForm(true);
+                      const topicSource = sources.find(
+                        (source) => source.topic === viewTopic
+                      );
+
+                      setSelectedSourceId(topicSource?.id ?? "");
                       setViewTopic(null);
+                      setShowForm(true);
                     }}
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#2D4030] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#405743]"
+                    disabled={!sources.some(
+                      (source) => source.topic === viewTopic
+                    )}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#2D4030] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#405743] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Plus size={17} />
                     Create a card
@@ -490,23 +638,20 @@ export default function Flashcards() {
                       className="h-full rounded-full bg-[#F27A58] transition-all duration-300"
                       style={{
                         width: `${
-                          ((currentCardIndex + 1) /
-                            topicFlashcards.length) *
+                          ((currentCardIndex + 1) / topicFlashcards.length) *
                           100
                         }%`,
                       }}
                     />
                   </div>
 
-                  {/* Tall flashcard with a flip animation */}
+                  {/* Flip card */}
                   <div className="mx-auto w-full [perspective:1000px]">
                     <button
                       type="button"
                       onClick={handleFlip}
                       aria-label={
-                        isFlipped
-                          ? "Flip to question"
-                          : "Flip to answer"
+                        isFlipped ? "Flip to question" : "Flip to answer"
                       }
                       className="group relative mx-auto block h-[380px] w-full max-w-[260px] rounded-[22px] text-left outline-none focus-visible:ring-4 focus-visible:ring-[#F27A58]/50 sm:h-[420px] sm:max-w-[290px]"
                     >
@@ -535,10 +680,7 @@ export default function Flashcards() {
                           }}
                         >
                           <span className="mb-6 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-widest">
-                            <BookOpen
-                              size={14}
-                              className="mr-2 inline"
-                            />
+                            <BookOpen size={14} className="mr-2 inline" />
                             Question
                           </span>
 
@@ -571,10 +713,7 @@ export default function Flashcards() {
                           }}
                         >
                           <span className="mb-6 rounded-full bg-white/25 px-4 py-2 text-xs font-semibold uppercase tracking-widest">
-                            <Sparkles
-                              size={14}
-                              className="mr-2 inline"
-                            />
+                            <Sparkles size={14} className="mr-2 inline" />
                             Answer
                           </span>
 
@@ -591,8 +730,19 @@ export default function Flashcards() {
                     </button>
                   </div>
 
+                  {/* Delete current flashcard */}
+                  <div className="mt-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCard(currentCard)}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-[#9A4432] transition hover:bg-white"
+                    >
+                      Delete this card
+                    </button>
+                  </div>
+
                   {/* Previous and next buttons */}
-                  <div className="mt-7 flex items-center justify-between gap-3">
+                  <div className="mt-3 flex items-center justify-between gap-3">
                     <button
                       type="button"
                       onClick={handlePreviousCard}
@@ -617,8 +767,8 @@ export default function Flashcards() {
                   </div>
 
                   <p className="mt-5 text-center text-xs leading-5 text-[#74675F]">
-                    Think of the answer first, then flip the card
-                    to check what you remember.
+                    Think of the answer first, then flip the card to check
+                    what you remember.
                   </p>
                 </>
               )}

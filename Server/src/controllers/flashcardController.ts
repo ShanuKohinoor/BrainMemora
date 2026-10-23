@@ -15,6 +15,21 @@ export const createFlashcard =  async(
          }
 
          const {topic,title,sources,question,answer} = req.body;
+
+         // Check that the required flashcard details are provided.
+            if (
+                typeof topic !== "string" ||
+                !topic.trim() ||
+                typeof question !== "string" ||
+                !question.trim() ||
+                typeof answer !== "string" ||
+                !answer.trim()
+            ) {
+                throw new BadRequest(
+                    "Topic, question, and answer are required"
+                );
+            }
+            
          const userId = req.userId
 
                  console.log("Flashcardroute reached",userId);
@@ -145,7 +160,7 @@ export const updateFlashCard =async(
       const userId = req.userId;
       const {id} = req.params
 
-      
+
 
     //   Find flashcard
       const updateFlashcard = await flashcardModel.findOneAndUpdate(
