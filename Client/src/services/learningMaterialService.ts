@@ -24,6 +24,26 @@ export const createMaterial = async(data:CreateLearningMaterialBody)=>{
 }
 
 
+
+// Upload a selected file to the backend.
+export const uploadMaterialFile = async (file: File) => {
+    // FormData sends the actual file, not just its name.
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Send the file to the existing backend upload endpoint.
+    const response = await api.post(
+        "/api/upload/upload",
+        formData
+    );
+
+    // Return the uploaded file's URL and key.
+    return response.data.data;
+};
+
+
+
+
 //  Update Material
 // export const updateMaterial  = async()=>{
 //     const response = await api.post(

@@ -14,7 +14,7 @@ const flashcardSourceSchema = new mongoose.Schema<FlashcardSource>({
         required:true
       }
     },
-      {_id:false}
+      {_id:false}               // Prevents Mongoose from generating a separate _id for each source subdocument.
 )
 
 // Define the structure of flashcard document
@@ -33,6 +33,11 @@ const flashcardSchema = new mongoose.Schema<Flashcard>({
     // Stores the learning materials linked to this flashcard.
     sources:{
         type:[flashcardSourceSchema],
+        required:true
+    },
+    difficultyLevel:{
+        type:String,
+        enum:["easy","medium","hard"],
         required:true
     },
     tags:{

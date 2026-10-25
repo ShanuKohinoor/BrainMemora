@@ -1,4 +1,9 @@
 
+// Difficulty of each flash card
+export type FlashCardDifficulty = "easy" | "medium" | "hard"
+
+
+
 // Stores all flashcard details in the MongoDB
 export interface Flashcard{
     _id:string;
@@ -7,6 +12,7 @@ export interface Flashcard{
     topic:string;
     tags?:string[];
     sources:FlashcardSource[];
+    difficultyLevel:FlashCardDifficulty;
     question:string;
     answer?:string;
     createdAt:Date;
@@ -14,11 +20,11 @@ export interface Flashcard{
 }
 
 
-// Stores all flashcard source details
-export interface FlashcardSource{
+// Stores the notes and learning materials linked to this flashcard.
+   export interface FlashcardSource{
     sourceId: string
     sourceType: "note" | "learningMaterial"
-}
+  }
 
 
 // Data required to create a flashcard
@@ -27,6 +33,7 @@ export interface FlashcardBody{
     topic:string;
     tags?:string[];
     sources:FlashcardSource[];
+    difficultyLevel:FlashCardDifficulty;
     question:string;
     answer?:string;
 }

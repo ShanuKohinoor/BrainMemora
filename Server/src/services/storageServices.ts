@@ -76,3 +76,32 @@ export const getFileUrl = async (
            // Send the delete request to AWS S3 to delete from there
            await s3Client.send(command)
  }
+
+
+
+
+ // Download a file from S3 so BrainMemora can read its contents.
+export const downloadFileFromS3 = async (
+    fileKey: string
+): Promise<Buffer> => {
+
+    // Find the file in the existing S3 bucket.
+    const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: fileKey
+    });
+
+    // Ask AWS S3 to return the file.
+    const response = await s3Client.send(command);
+
+    // Stop if S3 did not return any file data.
+    if (!response.Body) {
+        throw new Error("Could not download file from S3");
+    }
+
+    // Convert the downloaded data into a Buffer.
+    const bytes = await response.Body.transformToByteArray();
+
+    // Return the PDF data to the caller.
+    return Buffer.from(bytes);
+};

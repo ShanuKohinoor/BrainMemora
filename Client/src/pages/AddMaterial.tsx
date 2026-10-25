@@ -1,4 +1,4 @@
-import { createMaterial } from "../services/learningMaterialService";
+import { createMaterial, uploadMaterialFile } from "../services/learningMaterialService";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router";
@@ -28,34 +28,70 @@ export default function AddMaterial(){
     const [success,setSuccess] = useState("")
 
 
-    const handleSubmit: React.ComponentProps<"form">["onSubmit"] = async(e)=>{
-        e.preventDefault()
-        setError("")
-        setSuccess("")
+const handleSubmit: React.ComponentProps<"form">["onSubmit"] = async (e) => {
+    // Prevent browser from refreshing the page
+    e.preventDefault();
 
-        if(!type){
-            setError("Please select a type material")
-            return
-        }
+    // Clear messages from the previous submission
+    setError("");
+    setSuccess("");
 
-        try{
-          const response = await createMaterial({
-                title,
-                topic,
-                description,
-                type,
-                ...(activeTab === "url" && { externalUrl })
-
-            })
-            setSuccess(response.message)
-        }catch(error:any){
-            setError(
-                error.response?.data?.message ||
-                "Failed to create material. Please try"
-            )
-        }
+    // A material type must be selected
+    if (!type) {
+        setError("Please select a material type");
+        return;
     }
 
+    // The Upload File tab requires a selected file
+    if (activeTab === "upload" && !file) {
+        setError("Please select a file to upload");
+        return;
+    }
+
+    // The URL Link tab requires a URL
+    if (activeTab === "url" && !externalUrl.trim()) {
+        setError("Please enter a URL");
+        return;
+    }
+
+    try {
+        // Hold the uploaded file details
+        let fileUrl: string | undefined;
+        let fileKey: string | undefined;
+
+        // Upload the file only when the Upload File tab is active.
+        if (activeTab === "upload" && file) {
+            const uploadedFile = await uploadMaterialFile(file);
+
+            // Keep the S3 URL and key for the MongoDB record.
+            fileUrl = uploadedFile.fileUrl;
+            fileKey = uploadedFile.fileKey;
+        }
+
+        // Save the material details after the file upload succeeds.
+        const response = await createMaterial({
+            title,
+            topic,
+            description,
+            type,
+            ...(fileUrl && { fileUrl }),
+            ...(fileKey && { fileKey }),
+            ...(activeTab === "url" && { externalUrl: externalUrl.trim() })
+        });
+
+        // Display the backend success message.
+        setSuccess(response.message);
+
+        // Clear the selected file after save.
+        setFile(null);
+    } catch (error: any) {
+        // Display the backend error
+        setError(
+            error.response?.data?.message ||
+            "Failed to create material. Please try again."
+        );
+    }
+}
     return(
         <>
         <DashboardLayout backLabel="Back to Library" backTo="/allLearningMaterials">

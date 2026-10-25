@@ -2,9 +2,10 @@ import type { Request,Response } from "express"
 import { UnauthorizedError,NotFoundError, ConflictError, BadRequest } from "../utils/error.js"
 import type { LearningMaterial,CreateLearningMaterialBody } from "../types/learningMaterial.types.js"
 import { learningMaterialModel } from "../models/learningMaterials.js"
-import { getFileUrl, deleteFromS3 } from "../services/storageServices.js"
+import { getFileUrl, deleteFromS3,downloadFileFromS3 } from "../services/storageServices.js"
 import type { ApiResponse } from "../types/apiResponse.types.js"
-
+import { extractPdfText } from "../utils/pdfExtractor.js";
+import { extractImageText } from "../utils/imageTextExtractor.js";
 
 
 //                        LEARNING MATERIALS CONTROLLER
@@ -319,6 +320,81 @@ export const updateMaterial = async(
 
 
 
+// Extract text from an uploaded PDF or image
+export const extractMaterialText = async (
+    req: Request<{ id: string }>,
+    res: Response<ApiResponse<LearningMaterial>>
+) => {
+    // Check whether the user is logged in
+    if (!req.userId) {
+        throw new UnauthorizedError("Please login first");
+    }
 
+    // Get the logged-in user's ID and material ID
+    const userId = req.userId;
+    const { id } = req.params;
+
+    // Find the material belonging to this user.
+    const material = await learningMaterialModel.findOne({
+        _id: id,
+        userId
+    });
+
+    // Stop if the material does not exist.
+    if (!material) {
+        throw new NotFoundError("Material not found");
+    }
+
+    // Reuse the extracted text if it has already been saved.
+    if (material.extractedText?.trim()) {
+        return res.status(200).json({
+            success: true,
+            message: "Extracted text already exists",
+            data: material
+        });
+    }
+
+    // Make sure an uploaded file is available in S3.
+    if (!material.fileKey) {
+        throw new BadRequest(
+            "The material does not have an uploaded file"
+        );
+    }
+
+    // Download the actual file contents from S3.
+    const fileBuffer = await downloadFileFromS3(material.fileKey);
+
+    // Store the text extracted from the file.
+    let extractedText: string;
+
+    // Choose the extractor based on the material type.
+    if (material.type === "pdf") {
+        extractedText = await extractPdfText(fileBuffer);
+    } else if (material.type === "image") {
+        extractedText = await extractImageText(fileBuffer);
+    } else {
+        throw new BadRequest(
+            "Text extraction is available for PDFs and images only"
+        );
+    }
+
+    // Do not save an empty extraction result.
+    if (!extractedText.trim()) {
+        throw new BadRequest(
+            "No readable text was found in this file"
+        );
+    }
+
+    // Save the extracted text in the existing MongoDB record.
+    material.extractedText = extractedText;
+    await material.save();
+
+    // Return the updated learning material.
+    return res.status(200).json({
+        success: true,
+        message: "Text extracted and saved successfully",
+        data: material
+    });
+};
 
 

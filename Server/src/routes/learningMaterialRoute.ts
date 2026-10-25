@@ -8,13 +8,15 @@ import {
         getOneMaterial,
         updateMaterial,
         deleteMaterial,
-        togglePinMaterial,    
+        togglePinMaterial, 
+        extractMaterialText   
 } from "../controllers/learningMaterialController.js"
 
 const router = express.Router()
 
 // Learning Material
 router.post('/learningMaterial',verifyUser,createLearningMaterial)
+router.post('/extractMaterialText/:id',verifyUser,extractMaterialText)
 router.get('/allLearningMaterials',verifyUser,getAllLearningMaterial)
 router.get('/getLearningMaterial/:id',verifyUser,getOneMaterial)
 router.patch('/updateOneMaterial/:id',verifyUser,updateMaterial)
