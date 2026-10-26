@@ -13,6 +13,7 @@ import { flashcardGenerator } from "../utils/flashcardGenerator.js";
 import { downloadFileFromS3 } from "../services/storageServices.js";
 import { extractPdfText } from "../utils/pdfExtractor.js";
 import { extractImageText } from "../utils/imageTextExtractor.js";
+import { transcribedMedia } from "../utils/whisperTranscriber.js";
 
 // Create one flashcard manually.
 export const createFlashcard = async (
@@ -188,13 +189,15 @@ export const generateFlashcardsFromMaterials = async (
   const materialTexts: string[] = [];
 
   for (const material of materials) {
-    // Support PDFs and images only.
+    // Support PDFs, images, audio, and video.
     if (
       material.type !== "pdf" &&
-      material.type !== "image"
+      material.type !== "image" &&
+      material.type !== "audio" &&
+      material.type !== "video"
     ) {
       throw new BadRequest(
-        `"${material.title}" is not a supported PDF or image`
+        `"${material.title}" is not a supported material type`
       );
     }
 
@@ -220,14 +223,19 @@ export const generateFlashcardsFromMaterials = async (
         material.fileKey
       );
 
-      // Extract text according to the material type.
-      if (material.type === "pdf") {
-        extractedText = await extractPdfText(fileBuffer);
-      } else {
-        extractedText = await extractImageText(fileBuffer);
-      }
+    // Extract text using the correct method for each material type.
+    if (material.type === "pdf") {
+      extractedText = await extractPdfText(fileBuffer);
+    } else if (material.type === "image") {
+      extractedText = await extractImageText(fileBuffer);
+    } else if (
+      material.type === "audio" ||
+      material.type === "video"
+    ) {
+      extractedText = await transcribedMedia(fileBuffer);
+    }
 
-      // Stop if no readable text was extracted.
+// Stop if no readable text was extracted.
       if (!extractedText.trim()) {
         throw new BadRequest(
           `No readable text was found in "${material.title}"`
@@ -297,26 +305,23 @@ export const generateFlashcardsFromMaterials = async (
 
 
 
-// Generate flashcards automatically from a selected note.
+// Generate flashcards automatically from a selected note
 export const generateFlashcardsFromNote = async (
   req: Request,
   res: Response
 ) => {
 
 
-  // Check the user is logged in.
+  // Check the user is logged in
   if (!req.userId) {
     throw new UnauthorizedError("Please login first");
   }
 
-  //  Read the note ID and generation settings.
+  //  Read the note id and flashcard generation settings
   const {
-    noteId,
-    numberOfCards = 10,
-    difficultyLevel = "medium",
-  } = req.body;
+    noteId, numberOfCards = 10, difficultyLevel = "medium",} = req.body;
 
-  //  Validate the note ID.
+  //  Validate the note Id
   if (
     typeof noteId !== "string" ||
     !noteId.trim() ||
@@ -325,7 +330,7 @@ export const generateFlashcardsFromNote = async (
     throw new BadRequest("A valid note ID is required");
   }
 
-  //  Validate the number of cards.
+  //  Validate the number of cards
   if (
     !Number.isInteger(numberOfCards) ||
     numberOfCards < 1 ||
@@ -336,7 +341,7 @@ export const generateFlashcardsFromNote = async (
     );
   }
 
-  //  Validate the difficulty.
+  //  Validate the difficulty Level
   if (
     difficultyLevel !== "easy" &&
     difficultyLevel !== "medium" &&
@@ -349,7 +354,7 @@ export const generateFlashcardsFromNote = async (
 
   const userId = req.userId;
 
-  //  Find the note belonging to this user.
+  //  Find the note belonging to this user
   const note = await noteModel.findOne({
     _id: noteId,
     userId,
@@ -359,22 +364,22 @@ export const generateFlashcardsFromNote = async (
     throw new NotFoundError("Note not found");
   }
 
-  //  Generate question-and-answer pairs from the note text.
+  //  Generate question and answer pairs from the note text
   const generatedFlashcards = flashcardGenerator(note.content);
 
   if (generatedFlashcards.length === 0) {
     throw new BadRequest(
-      "No flashcards could be generated. Try a note containing sentences with 'is', 'uses', or 'has'."
+      "No flashcards could be generated."
     );
   }
 
-  //  Keep only the requested number of generated cards.
+  //  Keep only the requested number of generated cards
   const selectedFlashcards = generatedFlashcards.slice(
     0,
     numberOfCards
   );
 
-  //  Link each generated flashcard to its original note.
+  //  Link each generated flashcard to its original note
   const sources = [
     {
       sourceId: note._id.toString(),
@@ -382,7 +387,7 @@ export const generateFlashcardsFromNote = async (
     },
   ];
 
-  //  Save the generated flashcards to MongoDB.
+  //  Save the generated flashcards to MongoDB
   const savedFlashcards = await flashcardModel.insertMany(
     selectedFlashcards.map((flashcard) => ({
       userId,
@@ -395,7 +400,7 @@ export const generateFlashcardsFromNote = async (
     }))
   );
 
-  //  Return the saved flashcards.
+  //  Return the saved flashcards
   res.status(201).json({
     success: true,
     message: "Flashcards generated successfully",
@@ -407,7 +412,7 @@ export const generateFlashcardsFromNote = async (
 
 
 
-// Get all flashcards belonging to the logged-in user.
+// Get all flashcards belonging to the logged-in user
 export const getAllFlashCards = async (
   req: Request,
   res: Response

@@ -30,7 +30,7 @@ const learningMaterialSchema = new mongoose.Schema<LearningMaterial>({
       fileKey:{                         // Idenfies the actual s3 file
       type: String
       },
-      extractedText: {                   // Store text extracted from a PDF
+      extractedText: {                   // Store text extracted from a PDF,Url,Audio,Video,Note,Article etc
         type: String 
       },
       externalUrl:{                    // External wesite url

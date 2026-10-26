@@ -194,7 +194,7 @@ const handleSubmit: React.ComponentProps<"form">["onSubmit"] = async (e) => {
                 </p>
                 <input
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.mp3,.mp4,.doc,.docx"
+                accept=".pdf,.png,.jpg,.jpeg,.mp3,.wav,.ogg,.webm,.m4a,.mp4,.mov,.doc,.docx"
                 onChange={(e)=>{
                     setFile(e.target.files?.[0] ?? null)
                 }}

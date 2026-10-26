@@ -18,9 +18,13 @@ export const errorHandlingMiddleware = (
         })
     }
 
-        res.status(500).json({
-            success: false,
-            status:500,
-            message:"Internal Server Error"
-        })
+    // Print the original error in the backend terminal for debugging.
+    console.error("Unhandled server error:", err);
+
+    // Send a safe message to the frontend.
+    return res.status(500).json({
+        success: false,
+        status: 500,
+        message: "Internal Server Error"
+    });
 }

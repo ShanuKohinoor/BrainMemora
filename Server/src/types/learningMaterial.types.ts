@@ -10,7 +10,7 @@ export interface LearningMaterial{
     description?: string;
     fileUrl?: string;
     fileKey?: string;
-    extractedText?: string;        // Text extracted from a PDF
+    extractedText?: string;        // Text extracted from a PDF or audio /video transcript
     externalUrl?: string;
     topic:string;
     tags?:string[];

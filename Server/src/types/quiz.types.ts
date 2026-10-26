@@ -1,3 +1,11 @@
+
+export interface QuizSource{
+    sourceType: "learningMaterial" | "note";
+    sourceId:string;
+
+}
+
+
 export interface Quiz{
     id:string;
     userId:string;
@@ -16,8 +24,3 @@ export interface QuizQuestion{
 
 }
 
-export interface QuizSource{
-    sourceType:string;
-    sourceId:string;
-
-}

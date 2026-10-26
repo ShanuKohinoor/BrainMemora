@@ -6,6 +6,7 @@ import { getFileUrl, deleteFromS3,downloadFileFromS3 } from "../services/storage
 import type { ApiResponse } from "../types/apiResponse.types.js"
 import { extractPdfText } from "../utils/pdfExtractor.js";
 import { extractImageText } from "../utils/imageTextExtractor.js";
+import { transcribedMedia } from "../utils/whisperTranscriber.js"
 
 
 //                        LEARNING MATERIALS CONTROLLER
@@ -372,6 +373,10 @@ export const extractMaterialText = async (
         extractedText = await extractPdfText(fileBuffer);
     } else if (material.type === "image") {
         extractedText = await extractImageText(fileBuffer);
+    } else if (
+      material.type === "audio" || material.type === "video"
+    ){
+      extractedText = await transcribedMedia(fileBuffer)
     } else {
         throw new BadRequest(
             "Text extraction is available for PDFs and images only"
