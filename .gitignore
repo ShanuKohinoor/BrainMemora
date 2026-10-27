@@ -11,3 +11,7 @@ dist/
 
 # Local test uploads
 Server/uploads/
+
+
+# Local machine learning model (too large for GitHub)
+Server/models/ggml-base.en.bin
