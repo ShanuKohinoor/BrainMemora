@@ -6,6 +6,7 @@ import {
   getQuizById,
   updateQuiz,
   deleteQuiz,
+  generateQuiz
 } from "../controllers/quizController.js";
 
 import { verifyUser } from "../middlewares/verifyUser.js";
@@ -27,5 +28,9 @@ router.put("/updateQuiz/:id",verifyUser, updateQuiz);
 
 // Delete a quiz 
 router.delete("/delete/:id",verifyUser, deleteQuiz);
+
+//Generate Quiz
+router.post("/generate/",verifyUser, generateQuiz);
+
 
 export default router;
