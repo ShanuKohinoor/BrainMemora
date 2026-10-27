@@ -79,6 +79,10 @@ const handleSubmit: React.ComponentProps<"form">["onSubmit"] = async (e) => {
             ...(activeTab === "url" && { externalUrl: externalUrl.trim() })
         });
 
+        // Temporarily check what the backend returns.
+        console.log("Create material response:", response);
+
+
         // Display the backend success message.
         setSuccess(response.message);
 

@@ -94,6 +94,14 @@ import { transcribedMedia } from "../utils/whisperTranscriber.js"
           ...(tag && {tags:{$regex:tag, $options:"i"}})
         }).sort({createdAt: -1})   // Sort materials by newest first
 
+
+        // Generate a fresh URL for each uploaded file.
+        for (const material of allLearningMaterials) {
+            if (material.fileKey) {
+                material.fileUrl = await getFileUrl(material.fileKey);
+            }
+        }
+
        // Return all materials  If there are no materials, data will be an empty array []
         return res.status(200).json({
         success:true,

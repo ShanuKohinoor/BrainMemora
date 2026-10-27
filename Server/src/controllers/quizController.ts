@@ -3,6 +3,35 @@ import type { Request, Response } from "express";
 import { quizModel } from "../models/quiz.js";
 import { quizGenerator } from "../utils/quizGenerator.js";
 
+
+
+// Generate quiz questions from learning material
+export const generateQuiz = (req: Request, res: Response) => {
+  try {
+    const { content } = req.body;
+
+    // Check that content was provided
+    if (!content || typeof content !== "string") {
+      return res.status(400).json({
+        message: "Learning content is required.",
+      });
+    }
+
+    // Generate questions from the content
+    const questions = quizGenerator(content);
+
+    // Return the generated questions
+    return res.status(200).json({ questions });
+  } catch (error) {
+    console.error("Generate quiz error:", error);
+
+    return res.status(500).json({
+      message: "Failed to generate quiz.",
+    });
+  }
+};
+
+
 // Create a new quiz.
 export const createQuiz = async (req: Request, res: Response) => {
   try {
@@ -234,28 +263,3 @@ export const deleteQuiz = async (req: Request, res: Response) => {
 
 
 
-// Generate quiz questions from learning material
-export const generateQuiz = (req: Request, res: Response) => {
-  try {
-    const { content } = req.body;
-
-    // Check that content was provided
-    if (!content || typeof content !== "string") {
-      return res.status(400).json({
-        message: "Learning content is required.",
-      });
-    }
-
-    // Generate questions from the content
-    const questions = quizGenerator(content);
-
-    // Return the generated questions
-    return res.status(200).json({ questions });
-  } catch (error) {
-    console.error("Generate quiz error:", error);
-
-    return res.status(500).json({
-      message: "Failed to generate quiz.",
-    });
-  }
-};

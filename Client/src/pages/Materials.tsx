@@ -1,13 +1,37 @@
+
 import { Card } from "../components/Card"
 import { useEffect,useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { useNavigate } from "react-router";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
 import { ChevronDown } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { TopicCard } from "../components/TopicCard";
+import {
+    deleteMaterial,
+    updateMaterial,
+} from "../services/learningMaterialService";
+import type { MaterialType } from "../types/learningMaterial.types";
 
 export default function Materials(){    
 
+        const navigate = useNavigate();
+
+            // Background colors for topic cards.
+            const topicCardColors = [
+            "#F2D69B",
+            "#B5CDA8",
+            "#A7C1D0",
+            "#D9A399",
+            ];
+
+            // Background colors for material cards.
+            const cardColors = [
+            "#E8DFF5",
+            "#F6DFD5",
+            "#DCECE5",
+            "#DDE7F5",
+            ];
         // Read shared search from the Redux store
         const search = useAppSelector((state)=>state.search.search)
         
@@ -15,6 +39,13 @@ export default function Materials(){
         const [selectedCategory, setSelectedCategory] = useState("all")      // Filter by category
         const [selectedTopic,setSelectedTopic] = useState("")
 
+        // Track which material is being deleted or updated.
+        const [deletingId, setDeletingId] = useState<string | null>(null);
+        const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+        // Track which topic is being edited or deleted.
+        const [editingTopic, setEditingTopic] = useState<string | null>(null);
+        const [deletingTopic, setDeletingTopic] = useState<string | null>(null);
 
         const dispatch = useAppDispatch();
         const {loading,materials,error} = useAppSelector(
@@ -24,6 +55,96 @@ export default function Materials(){
         useEffect(()=>{
           dispatch(fetchLearningMaterials())
         },[dispatch])
+
+        // Delete a material and refresh the list.
+        const handleDelete = async (id: string): Promise<void> => {
+            try {
+                setDeletingId(id);
+                await deleteMaterial(id);
+                await dispatch(fetchLearningMaterials());
+            } catch (error) {
+                console.error("Failed to delete material:", error);
+            } finally {
+                setDeletingId(null);
+            }
+        };
+
+        // Update a material and refresh the list.
+        const handleUpdate = async (
+            id: string,
+            data: { title: string; topic: string; type: MaterialType }
+        ): Promise<boolean> => {
+            try {
+                setUpdatingId(id);
+                await updateMaterial(id, data);
+                await dispatch(fetchLearningMaterials());
+                return true;
+            } catch (error) {
+                console.error("Failed to update material:", error);
+                return false;
+            } finally {
+                setUpdatingId(null);
+            }
+        };
+
+        // Rename a topic by updating its learning materials.
+        const handleEditTopic = async (
+            oldTitle: string,
+            newTitle: string
+        ): Promise<boolean> => {
+            try {
+                setEditingTopic(oldTitle);
+
+                const topicMaterials = materials.filter(
+                    (material) => material.topic === oldTitle
+                );
+
+                for (const material of topicMaterials) {
+                    await updateMaterial(material._id, {
+                        title: material.title,
+                        topic: newTitle,
+                        type: material.type,
+                    });
+                }
+
+                await dispatch(fetchLearningMaterials());
+                return true;
+            } catch (error) {
+                console.error("Failed to update topic:", error);
+                return false;
+            } finally {
+                setEditingTopic(null);
+            }
+        };
+
+        // Delete a topic and its associated learning materials.
+        const handleDeleteTopic = async (topic: string): Promise<void> => {
+            try {
+                setDeletingTopic(topic);
+
+                const topicMaterials = materials.filter(
+                    (material) => material.topic === topic
+                );
+
+                for (const material of topicMaterials) {
+                    await deleteMaterial(material._id);
+                }
+
+                if (selectedTopic === topic) {
+                    setSelectedTopic("");
+                }
+
+                if (selectedCategory === topic) {
+                    setSelectedCategory("all");
+                }
+
+                await dispatch(fetchLearningMaterials());
+            } catch (error) {
+                console.error("Failed to delete topic:", error);
+            } finally {
+                setDeletingTopic(null);
+            }
+        };
 
         // Get unique topic names for topic card
         const topics = [...new Set(materials.map((material)=>material.topic))]
@@ -48,8 +169,16 @@ export default function Materials(){
 
     return(
        <>
-       <DashboardLayout backLabel="Back to Dashboard" backTo="/dashboard">
-        {loading && <p>Loading....</p>}
+        <DashboardLayout
+            backLabel={selectedTopic === "" ? "Back to Dashboard" : "Back to Library"}
+            backTo="/dashboard"
+            onBack={
+                selectedTopic === ""
+                    ? undefined
+                    : () => setSelectedTopic("")
+            }
+        >
+            {loading && <p>Loading....</p>}
 
         {error && <p>{error}</p>}
 
@@ -105,8 +234,8 @@ export default function Materials(){
 {selectedTopic === "" ? (
     <>
         {/* Show matching topic cards */}
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-2 px-16 py-4">
-            {filteredTopics.map((topic) => (
+         <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredTopics.map((topic,index) => (
                 <TopicCard
                     key={topic}
                     title={topic}
@@ -114,23 +243,43 @@ export default function Materials(){
                         materials.find((item) => item.topic === topic)?.description
                     }
                     progress={0}
+                    color={topicCardColors[index % cardColors.length]}
                     onOpenMaterials={() => setSelectedTopic(topic)}
+                    onGenerateFlashcards={() =>
+                    navigate("/flashcards", {
+                        state: { topic },
+                    })
+                    }              
+                   onEdit={(newTitle) => handleEditTopic(topic, newTitle)}
+                    onDelete={() => handleDeleteTopic(topic)}
+                    isEditing={editingTopic === topic}
+                    isDeleting={deletingTopic === topic}
                 />
             ))}
         </div>
 
         {/* Show matching material titles when searching */}
-        {search.trim() !== "" &&
-            filteredMaterial.map((material) => (
-                <Card
-                    key={material._id}
-                    title={material.title}
-                    description={material.description}
-                    type={material.type}
-                    fileUrl={material.fileUrl}
-                    externalUrl={material.externalUrl}
-                />
-            ))}
+        {search.trim() !== "" && (
+            <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredMaterial.map((material,index) => (
+                    <Card
+                        key={material._id}
+                        _id={material._id}
+                        color={cardColors[index % cardColors.length]}
+                        title={material.title}
+                        topic={material.topic}
+                        description={material.description}
+                        type={material.type}
+                        fileUrl={material.fileUrl}
+                        externalUrl={material.externalUrl}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                        isDeleting={deletingId === material._id}
+                        isUpdating={updatingId === material._id}
+                    />
+                ))}
+            </div>
+        )}
 
         {/* Show a message if nothing matches */}
         {search.trim() !== "" &&
@@ -142,16 +291,25 @@ export default function Materials(){
             )}
     </>
 ) : (
-    filteredMaterial.map((material) => (
-        <Card
-            key={material._id}
-            title={material.title}
-            description={material.description}
-            type={material.type}
-            fileUrl={material.fileUrl}
-            externalUrl={material.externalUrl}
-        />
-    ))
+<div className="grid grid-cols-1 gap-6 px-4 py-4 md:grid-cols-2">
+                {filteredMaterial.map((material,index) => (
+            <Card
+                key={material._id}
+                _id={material._id}
+                color={cardColors[index % cardColors.length]}
+                title={material.title}
+                topic={material.topic}
+                description={material.description}
+                type={material.type}
+                fileUrl={material.fileUrl}
+                externalUrl={material.externalUrl}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                isDeleting={deletingId === material._id}
+                isUpdating={updatingId === material._id}
+            />
+        ))}
+    </div>
 )}
 
         </DashboardLayout>

@@ -9,9 +9,10 @@ type DashboardProp = {
     children: ReactNode;           // Allows the layout to recieve page content(current page content)
     backLabel?:string;             // Text displayed on the button
     backTo?:string;                // Destination page to open
+    onBack?: () => void;
 }
 
-export function DashboardLayout({children,backLabel,backTo}:DashboardProp){ 
+export function DashboardLayout({children,backLabel,backTo,onBack}:DashboardProp){ 
 
     const navigate = useNavigate();
 
@@ -34,7 +35,14 @@ export function DashboardLayout({children,backLabel,backTo}:DashboardProp){
                />     
                <main className="flex-1">
                   <button className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[#2D4030] hover:bg-[#A3B19B]/20 transition-colors"
-                  onClick={()=> backTo && navigate(backTo)}>      
+                    onClick={() => {
+                            if (onBack) {
+                                onBack();
+                            } else if (backTo) {
+                                navigate(backTo);
+                            }
+                  }}       
+                  >      
                     <ArrowLeft size={18}/>
                     {backLabel}
                   </button>

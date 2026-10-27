@@ -51,7 +51,7 @@ export const getFileUrl = async (
     })
     // Generate a temporary signed URL for the private file
     const url = await getSignedUrl(s3Client, command, {
-        expiresIn: 3600
+        expiresIn: 21600
     })
     // Return the generated temporary URL
     return url
@@ -80,28 +80,28 @@ export const getFileUrl = async (
 
 
 
- // Download a file from S3 so BrainMemora can read its contents.
+ // Download a file from S3 so BrainMemora can read its contents
 export const downloadFileFromS3 = async (
     fileKey: string
 ): Promise<Buffer> => {
 
-    // Find the file in the existing S3 bucket.
+    // Find the file in the existing S3 bucket
     const command = new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: fileKey
     });
 
-    // Ask AWS S3 to return the file.
+    // Ask AWS S3 to return the file
     const response = await s3Client.send(command);
 
-    // Stop if S3 did not return any file data.
+    // Stop if S3 did not return any file data
     if (!response.Body) {
         throw new Error("Could not download file from S3");
     }
 
-    // Convert the downloaded data into a Buffer.
+    // Convert the downloaded data into a Buffer
     const bytes = await response.Body.transformToByteArray();
 
-    // Return the PDF data to the caller.
+    // Return the PDF data 
     return Buffer.from(bytes);
 };
