@@ -12,9 +12,15 @@ import {
 } from "lucide-react";
 
 import { Link } from "react-router";
+import { useAppSelector } from "../app/hooks";
+import type { RootState } from "../app/store";
+
 
 // Landing page 
 export function LandingPage() {
+    const isLoggedIn = useAppSelector((state: RootState) => state.auth.isLoggedIn);
+
+
   return (
     // Main page background
     <div className="min-h-screen bg-[#FDF3EC] text-slate-900 font-sans selection:bg-[#F27A58]/20">
@@ -57,7 +63,7 @@ export function LandingPage() {
         {/* Login and Register navigation buttons */}
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to={isLoggedIn ? "/dashboard" : "/login"}
             className="px-5 py-2 text-sm font-semibold text-slate-700 bg-white/80 hover:bg-white rounded-full shadow-sm border border-black/5 transition-all"
           >
             Login

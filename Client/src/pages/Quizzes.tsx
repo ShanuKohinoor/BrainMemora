@@ -345,7 +345,10 @@ export default function QuizPage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      backLabel="Back to Library"
+      backTo="/allLearningMaterials"
+   >
       <div className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6">
         {/* Page heading */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

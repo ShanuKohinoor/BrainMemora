@@ -34,6 +34,35 @@ import type { User } from "../types/user.types.js"
 
 
 
+     // Delete Profile
+     export const deleteProfile = async(
+        req:Request,
+        res:Response<ApiResponse<User | null>>
+     )=>{
+        // Check if the user is logged in
+        if (!req.userId) {
+            throw new UnauthorizedError("Please login first")
+        }
+
+                  const id = req.userId
+
+          const user = await UserModel.findByIdAndDelete(id).select("-password")
+            if (!user) {
+                throw new NotFoundError("User not found")
+            }
+
+
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile Deleted successfully",
+            data:null
+        })
+
+     }
+
+
+
     //Update profile
 
     export const updateProfile = async (

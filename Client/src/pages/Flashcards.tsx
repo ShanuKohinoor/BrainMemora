@@ -595,18 +595,19 @@ export default function Flashcards() {
                 Loading your flashcards...
               </p>
             ) : flashcardSets.length === 0 ? (
-              <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
-                  <BookOpen size={23} />
-                </div>
 
-                <h3 className="font-semibold">No flashcards yet</h3>
-
-                <p className="mt-2 text-sm leading-6 text-[#74675F]">
-                  Generate your first flashcards to begin revising.
-                </p>
+          <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
+                <BookOpen size={23} />
               </div>
-            ) : (
+
+              <h3 className="font-semibold">No flashcards yet</h3>
+
+              <p className="mt-2 text-sm leading-6 text-[#74675F]">
+                Generate your first flashcards to begin revising.
+              </p>
+            </div>
+              ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3">
                 {flashcardSets.map((set, index) => {
                   const topicNote = notes.find(

@@ -34,8 +34,9 @@ export function DashboardLayout({children,backLabel,backTo,onBack}:DashboardProp
                <Navbar onMenuClick={handleMenuClick}  
                />     
                <main className="flex-1">
-                  <button className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[#2D4030] hover:bg-[#A3B19B]/20 transition-colors"
-                    onClick={() => {
+                  <button 
+                    className="ml-2 inline-flex items-center gap-2 rounded-lg border border-[#D7C8BB] px-3 py-2 text-[#2D4030] transition-colors hover:bg-[#A3B19B]/20"
+                     onClick={() => {
                             if (onBack) {
                                 onBack();
                             } else if (backTo) {

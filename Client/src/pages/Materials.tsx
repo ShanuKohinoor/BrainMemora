@@ -178,20 +178,16 @@ export default function Materials(){
                     : () => setSelectedTopic("")
             }
         >
-            {loading && <p>Loading....</p>}
-
-        {error && <p>{error}</p>}
-
-     <div className="flex justify-start items-center gap-3 px-4 py-2">
+      <div className="flex justify-start items-center gap-3 px-4 py-2 ml-20">
 
         {/* Filter by material type */}
-          <div className="relative w-24 shrink-0">
+          <div className="relative w-24 shrink-0 ">
             <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-24 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
             >
-                <option value="all" hidden>By Type</option>
+                <option value="all" hidden>by Type</option>
                 <option value="all">All</option>
                 <option value="pdf">PDF</option>
                 <option value="audio">Audio</option>
@@ -214,7 +210,7 @@ export default function Materials(){
                   onChange={(e)=>setSelectedCategory(e.target.value)}
                   className="w-28 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
                 >
-                    <option value="all" hidden>By Category</option>
+                    <option value="all" hidden>by Category</option>
                     {topics.map((topic)=>(
                         <option key={topic} value={topic}>
                            {topic}
@@ -231,7 +227,44 @@ export default function Materials(){
 
          </div>
 
-{selectedTopic === "" ? (
+
+      <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#4A3028] sm:px-6 lg:px-8">
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <p className="mb-1 text-sm font-medium text-[#C45F43]">
+                LEARN · ORGANIZE · REMEMBER
+                </p>
+
+                <h1 className="text-3xl font-bold text-[#4A3028] sm:text-4xl">
+                My Learning Materials
+                </h1>
+            </div>
+
+            </div>
+        {loading && <p>Loading....</p>}
+
+        {error && <p>{error}</p>}
+        
+        {!loading && !error && topics.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-[#E8C9B9] bg-white p-8 text-center">
+                <p className="font-semibold">No topics yet</p>
+
+                <p className="mt-2 text-sm text-[#80665C]">
+                    Add learning materials to start organizing your learning.
+                </p>
+
+                <button
+                    onClick={() => navigate("/addMaterial")}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-5 py-3 font-semibold text-white hover:bg-[#DE6848]"
+                >
+                    Add Material
+                </button>
+            </div>
+        )}
+
+
+      {selectedTopic === "" ? (
     <>
         {/* Show matching topic cards */}
          <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -293,29 +326,30 @@ export default function Materials(){
                 </p>
             )}
     </>
-) : (
-<div className="grid grid-cols-1 gap-6 px-4 py-4 md:grid-cols-2">
-                {filteredMaterial.map((material,index) => (
-            <Card
-                key={material._id}
-                _id={material._id}
-                color={cardColors[index % cardColors.length]}
-                title={material.title}
-                topic={material.topic}
-                description={material.description}
-                type={material.type}
-                fileUrl={material.fileUrl}
-                externalUrl={material.externalUrl}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
-                isDeleting={deletingId === material._id}
-                isUpdating={updatingId === material._id}
-            />
-        ))}
-    </div>
-)}
+        ) : (
+        <div className="grid grid-cols-1 gap-6 px-4 py-4 md:grid-cols-2">
+                        {filteredMaterial.map((material,index) => (
+                    <Card
+                        key={material._id}
+                        _id={material._id}
+                        color={cardColors[index % cardColors.length]}
+                        title={material.title}
+                        topic={material.topic}
+                        description={material.description}
+                        type={material.type}
+                        fileUrl={material.fileUrl}
+                        externalUrl={material.externalUrl}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                        isDeleting={deletingId === material._id}
+                        isUpdating={updatingId === material._id}
+                    />
+                ))}
+            </div>
+        )}
 
-        </DashboardLayout>
+     </main>
+    </DashboardLayout>
        </> 
        
     )
