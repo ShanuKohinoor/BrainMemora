@@ -30,7 +30,7 @@ router.put("/updateQuiz/:id",verifyUser, updateQuiz);
 router.delete("/delete/:id",verifyUser, deleteQuiz);
 
 //Generate Quiz
-router.post("/generate/",verifyUser, generateQuiz);
+router.post("/generate",verifyUser, generateQuiz);
 
 
 export default router;

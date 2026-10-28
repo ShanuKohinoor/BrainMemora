@@ -295,7 +295,7 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
-  // Select all available titles explicitly.
+  // Select all available titles 
   function handleSelectAllTitles() {
     const allTitlesSelected =
       materialTitles.length > 0 &&
@@ -311,7 +311,7 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Select all available material types explicitly.
+  // Select all available material types 
   function handleSelectAllTypes() {
     const allTypesSelected =
       availableMaterialTypes.length > 0 &&
@@ -327,7 +327,7 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Open a topic containing newly generated cards.
+  // Open a topic containing newly generated card
   function openGeneratedSet(cards: Flashcard[]) {
     const firstCard = cards[0];
 
@@ -339,7 +339,7 @@ export default function Flashcards() {
     setIsFlipped(false);
   }
 
-  // Generate cards from a note or selected learning materials.
+  // Generate cards from a note or selected learning materials
   async function handleGenerateFlashcards() {
     setErrorMessage("");
     setSuccessMessage("");
@@ -349,7 +349,7 @@ export default function Flashcards() {
       return;
     }
 
-    // Require explicit title and type selections.
+    // Require title and type 
     if (validSelectedTitles.length === 0) {
       setErrorMessage("Please select at least one title.");
       return;
@@ -373,8 +373,7 @@ export default function Flashcards() {
       let generatedCards: Flashcard[] = [];
 
       if (selectedNoteId) {
-        // Temporary compatibility with the existing service signature.
-        // Difficulty will be removed from the service/backend separately.
+
         generatedCards = await generateFlashcardFromNote(
           selectedNoteId,
           numberOfCards,
@@ -395,7 +394,7 @@ export default function Flashcards() {
         return;
       }
 
-      // Use the returned topic, or fall back to the selected topic.
+      // Use the returned topic(fall back) to the selected topic
       const fallbackTopic =
         validSelectedTopics.length === 1
           ? validSelectedTopics[0]
@@ -408,7 +407,7 @@ export default function Flashcards() {
         })
       );
 
-      // Add the new cards without removing existing cards.
+      // Add the new cards without removing existing cards
       setFlashcards((previousCards) => [
         ...cardsToAdd,
         ...previousCards,
@@ -426,12 +425,12 @@ export default function Flashcards() {
     }
   }
 
-  // Flip the current flashcard.
+  // Flip the current flashcard
   function handleFlip() {
     setIsFlipped((previousValue) => !previousValue);
   }
 
-  // Move to the next card.
+  // Move to the next card
   function handleNextCard() {
     if (currentCardIndex < topicFlashcards.length - 1) {
       setCurrentCardIndex((previousIndex) => previousIndex + 1);
@@ -439,7 +438,7 @@ export default function Flashcards() {
     }
   }
 
-  // Move to the previous card.
+  // Move to the previous card
   function handlePreviousCard() {
     if (currentCardIndex > 0) {
       setCurrentCardIndex((previousIndex) => previousIndex - 1);
@@ -447,14 +446,14 @@ export default function Flashcards() {
     }
   }
 
-  // Close the revision modal.
+  // Close the modal
   function handleCloseStudy() {
     setViewSetKey(null);
     setCurrentCardIndex(0);
     setIsFlipped(false);
   }
 
-  // Delete the currently displayed flashcard.
+  // Delete the currently displayed flashcard
   async function handleDeleteCard(card: Flashcard) {
     if (!card._id) {
       setErrorMessage("This flashcard has no valid ID.");
@@ -481,7 +480,7 @@ export default function Flashcards() {
         return;
       }
 
-      // Keep the index valid after deleting a card.
+      // Keep the index valid after deleting a card
       setCurrentCardIndex((previousIndex) =>
         Math.min(previousIndex, remainingTopicCards.length - 1)
       );
@@ -501,7 +500,7 @@ export default function Flashcards() {
         {/* Main page heading. */}
         <header className="mb-8">
           <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
-            LEARN • REVISE • REMEMBER
+            LEARN * REVISE * REMEMBER
           </p>
 
           <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
@@ -514,7 +513,7 @@ export default function Flashcards() {
           </p>
         </header>
 
-        {/* Error feedback. */}
+        {/* Error feedback */}
         {errorMessage && (
           <div
             role="alert"
@@ -524,7 +523,7 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Success feedback. */}
+        {/* Success feedback */}
         {successMessage && (
           <div
             role="status"
@@ -534,9 +533,9 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Main page: generation card and saved topic sets. */}
+        {/* Main page: generation card and saved topics */}
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          {/* Generation card. */}
+          {/* Generation card */}
           <section className="rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-5 flex h-24 w-28 items-center justify-center">
               <div className="relative h-24 w-24">
@@ -581,10 +580,10 @@ export default function Flashcards() {
             </button>
           </section>
 
-          {/* Each topic appears only once. */}
+          {/* Each topic appears only once */}
           <section className="min-w-0">
             <h2 className="mb-1 text-lg font-semibold sm:text-xl">
-              Your flashcard sets
+              Your flashcards
             </h2>
 
             <p className="mb-5 text-sm leading-6 text-[#74675F]">
@@ -665,7 +664,7 @@ export default function Flashcards() {
           </section>
         </div>
 
-        {/* Flashcard generation modal. */}
+        {/* Flashcard generation modal */}
         {showGenerationForm && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#2D4030]/60 p-3 sm:p-5"
@@ -779,7 +778,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Title checklist: disabled until a topic is selected. */}
+                {/* Title checklist:- Disabled until a topic is selected */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
                     2. Choose Titles
@@ -864,7 +863,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Material type checklist: follows the selected titles. */}
+                {/* Material type checklist:- Follows the selected titles */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
                     3. Material Types
@@ -960,7 +959,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Number of cards to generate. */}
+                {/* Number of cards to generate */}
                 <div>
                   <label
                     htmlFor="card-count"
@@ -986,7 +985,7 @@ export default function Flashcards() {
                 </div>
               </div>
 
-              {/* Explain when the current selections match no materials. */}
+              {/* Explain when the current selections match no materials */}
               {validSelectedTopics.length > 0 &&
                 validSelectedTitles.length > 0 &&
                 validSelectedMaterialTypes.length > 0 &&
@@ -1026,7 +1025,7 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Revision modal: all cards for the chosen topic. */}
+        {/* Revision modal:- All cards for the chosen topic */}
         {viewSetKey && activeSet && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#2D4030]/60 p-2 sm:p-4">
             <section
@@ -1059,7 +1058,7 @@ export default function Flashcards() {
                 </button>
               </div>
 
-              {/* Display all cards in this topic. */}
+              {/* Display all cards in this topic */}
               {topicFlashcards.length > 0 ? (
                 <>
                   <div className="mt-4 flex shrink-0 items-center justify-between text-xs sm:text-sm">
@@ -1109,7 +1108,7 @@ export default function Flashcards() {
                               : "rotateY(0deg)",
                           }}
                         >
-                          {/* Question side. */}
+                          {/* Question side */}
                           <div
                             className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-[22px] p-4 text-center shadow-lg [backface-visibility:hidden] sm:p-6"
                             style={{
@@ -1133,7 +1132,7 @@ export default function Flashcards() {
                             </span>
                           </div>
 
-                          {/* Answer side. */}
+                          {/* Answer side */}
                           <div
                             className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-[22px] p-4 text-center shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)] sm:p-6"
                             style={{
@@ -1175,7 +1174,7 @@ export default function Flashcards() {
                     </div>
                   )}
 
-                  {/* Delete the current card. */}
+                  {/* Delete the current card */}
                   {currentCard && (
                     <div className="flex shrink-0 justify-center pb-1">
                       <button

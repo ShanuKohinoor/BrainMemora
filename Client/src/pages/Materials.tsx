@@ -249,7 +249,10 @@ export default function Materials(){
                     navigate("/flashcards", {
                         state: { topic },
                     })
-                    }              
+                    }        
+                    onGenerateQuiz={()=>
+                     navigate("/quizzes")
+                    }    
                    onEdit={(newTitle) => handleEditTopic(topic, newTitle)}
                     onDelete={() => handleDeleteTopic(topic)}
                     isEditing={editingTopic === topic}

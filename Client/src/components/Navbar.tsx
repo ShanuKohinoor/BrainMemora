@@ -30,7 +30,7 @@ export function Navbar({onMenuClick}:NavbarProps) {       // Recieve sidebar tog
             "/notes": "My Notes",
             "/allLearningMaterials": "My Library",
             "/addMaterial": "My Library",
-            "/quiz": "Quiz Center",
+            "/quizzes": "Quiz Center",
             "/flashcards": "Flashcards",
             "/profile": "My Profile",
         };

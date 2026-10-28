@@ -3,12 +3,12 @@ import {logout} from "../features/auth/authSlice"
 import { useDispatch } from "react-redux"
 import {api} from "../services/api"
 import { 
-    LayoutDashboard,
-    Library,
+    Home,
+    LibraryBig,
     NotebookPen,
     Layers,
-    Brain,
-    ClipboardList,
+    FileQuestion,
+    Bot,
     Trophy,
     Settings,
     LogOut
@@ -16,12 +16,12 @@ import {
 
 
 const navigationItems = [
-    {label:"Dashboard",path:"/dashboard", icon:LayoutDashboard},
-    {label:"My Library",path:"/allLearningMaterials",icon:Library},
+    {label:"Dashboard",path:"/dashboard", icon:Home},
+    {label:"My Library",path:"/allLearningMaterials",icon:LibraryBig},
     {label:"Notes",path:"/notes",icon:NotebookPen},
     {label:"Flashcards",path:"/flashcards",icon:Layers},
-    { label: "Quiz Center", path: "/quiz-center",icon:ClipboardList },
-    { label: "AI Assistant", path: "/ai-assistant",icon:Brain },
+    { label: "Quiz Center", path: "/quizzes",icon:FileQuestion },
+    { label: "AI Assistant", path: "/ai-assistant",icon:Bot },
     { label: "Rewards", path: "/rewards",icon:Trophy },
     { label: "Settings", path: "/settings",icon:Settings }
 ]
