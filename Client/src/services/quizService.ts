@@ -44,7 +44,7 @@ export const getOneQuiz= async (id: string): Promise<Quiz> => {
 
 // Save a generated quiz in MongoDB
 export const createQuiz = async (
-  quizData: Omit<Quiz, "id" | "userId" | "createdAt" | "updatedAt">
+  quizData: Omit<Quiz, "_id" | "userId" | "createdAt" | "updatedAt">
 ): Promise<Quiz> => {
   const response = await api.post("/api/quiz/createquiz", quizData);
 

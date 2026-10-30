@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -25,16 +26,13 @@ import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
 import type { MaterialType } from "../types/learningMaterial.types";
 
-// Include the database ID when the API returns it.
-type QuizWithDatabaseId = Quiz & { _id?: string };
-
-// Group saved quizzes by topic.
+// Group saved quizzes by topic
 type QuizSet = {
   topic: string;
-  quizzes: QuizWithDatabaseId[];
+  quizzes: Quiz[];
 };
 
-// Describe the material information used by this page.
+// Describe the material information used by this page
 type MaterialForQuiz = {
   _id?: string;
   id?: string;
@@ -43,53 +41,67 @@ type MaterialForQuiz = {
   type: MaterialType;
 };
 
-// Display the Quiz Center page.
+// Display the Quiz Center page
 export default function QuizPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  // Get learning materials from Redux.
+  // Get learning materials from Redux
   const materials = useAppSelector(
     (state) => state.learningMaterials.materials
   ) as MaterialForQuiz[];
 
-  // Store saved quizzes and loading states.
-  const [quizzes, setQuizzes] = useState<QuizWithDatabaseId[]>([]);
+  // Store saved quizzes and loading states
+  //Store the quizzes already saved by the user
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  // Check if the saved quizzes are loading
   const [isLoading, setIsLoading] = useState(true);
+  // Store the ID of the quiz to delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  //Check if new quiz is generating
   const [isGenerating, setIsGenerating] = useState(false);
+  // Which quiz to display
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  // Store the index of which question is currently displayed
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  // Control the generation modal.
+  // Store the selected answer for each question by user
+  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
+
+  // Check whether the quiz has been finished
+  const [isQuizFinished, setIsQuizFinished] = useState(false);
+
+  // The generation modal
   const [showGenerationForm, setShowGenerationForm] = useState(false);
 
-  // Store the selected topics, titles, and material types.
+  // Store the selected topics, titles, and material types
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<MaterialType[]>([]);
 
-  // Control the dropdown lists.
+  // Control the dropdown lists
   const [showTopicOptions, setShowTopicOptions] = useState(false);
   const [showTitleOptions, setShowTitleOptions] = useState(false);
   const [showTypeOptions, setShowTypeOptions] = useState(false);
 
-  // Store the requested number of questions.
+  // Store the requested number of questions
   const [numberOfQuestions, setNumberOfQuestions] = useState(5);
 
-  // Display feedback messages.
+  // Display feedback messages
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Load saved quizzes and learning materials.
-  useEffect(() => {
+  // Load saved quizzes and learning materials
+  useEffect(() => { //This tells React to run this code when the Quiz page loads
     const loadQuizzes = async () => {
       try {
         const savedQuizzes = await getAllQuizzes();
-        setQuizzes(savedQuizzes as QuizWithDatabaseId[]);
+        setQuizzes(savedQuizzes as Quiz[]);
       } catch {
-        // Handle errors when loading saved quizzes.
+        // Handle errors when loading saved quizzes
         setErrorMessage("Failed to load saved quizzes. Please try again.");
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Whether the request succeeds or fails,stop the loading state
       }
     };
 
@@ -97,14 +109,14 @@ export default function QuizPage() {
     dispatch(fetchLearningMaterials());
   }, [dispatch]);
 
-  // Get unique topic names from the available materials.
+  // Extracts only the topic names from all materials and removes duplicates
   const availableTopics = useMemo(
     () =>
       [...new Set(materials.map((material) => material.topic).filter(Boolean))],
-    [materials]
+    [materials] // If materials changes, recalculate availableTopics. Otherwise use the same
   );
 
-  // Get materials that belong to the selected topics.
+  // Get materials that belong to the selected topics
   const topicMaterials = useMemo(
     () =>
       materials.filter((material) =>
@@ -113,7 +125,7 @@ export default function QuizPage() {
     [materials, selectedTopics]
   );
 
-  // Get unique titles from the selected topics.
+  // Get unique titles from the selected topics
   const availableTitles = useMemo(
     () =>
       [
@@ -124,7 +136,7 @@ export default function QuizPage() {
     [topicMaterials]
   );
 
-  // Get materials that match the selected titles.
+  // Get materials that match the selected titles
   const titleMaterials = useMemo(
     () =>
       topicMaterials.filter((material) =>
@@ -133,13 +145,13 @@ export default function QuizPage() {
     [topicMaterials, selectedTitles]
   );
 
-  // Get unique material types from the selected titles.
+  // Get unique material types from the selected titles
   const availableTypes = useMemo(
     () => [...new Set(titleMaterials.map((material) => material.type))],
     [titleMaterials]
   );
 
-  // Filter materials according to the selected types.
+  // Filter materials according to the selected types
   const selectedMaterials = useMemo(
     () =>
       titleMaterials.filter(
@@ -152,7 +164,7 @@ export default function QuizPage() {
 
   // Group saved quizzes by topic.
   const quizSets: QuizSet[] = useMemo(() => {
-    const groupedQuizzes: Record<string, QuizWithDatabaseId[]> = {};
+    const groupedQuizzes: Record<string, Quiz[]> = {};
 
     quizzes.forEach((quiz) => {
       const topic = quiz.topic || "General";
@@ -169,6 +181,68 @@ export default function QuizPage() {
       quizzes: topicQuizzes,
     }));
   }, [quizzes]);
+
+  // Find the quiz selected by the user
+  const selectedQuiz = quizzes.find(
+    (quiz) => quiz._id === selectedQuizId
+  );
+
+  // Get the question currently displayed
+  const currentQuestion = selectedQuiz?.questions[currentQuestionIndex];
+
+  // Store the selected answer for the current question
+  const handleSelectAnswer = (answer: string) => {
+    setSelectedAnswers((current) => {
+      const updatedAnswers = [...current];
+      updatedAnswers[currentQuestionIndex] = answer;
+
+      return updatedAnswers;
+    });
+  };
+
+  // Start a quiz from the first question
+  const handleStartQuiz = (quizId: string) => {
+    setSelectedQuizId(quizId);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers([]);
+    setIsQuizFinished(false);
+  };
+
+  // Move to the previous question
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((current) => current - 1);
+    }
+  };
+
+  // Move to the next question
+  const handleNextQuestion = () => {
+    if (
+      selectedQuiz &&
+      currentQuestionIndex < selectedQuiz.questions.length - 1
+    ) {
+      setCurrentQuestionIndex((current) => current + 1);
+    }
+  };
+
+  // Finish the quiz and show the result
+  const handleFinishQuiz = () => {
+    setIsQuizFinished(true);
+  };
+
+  // Return to the saved quiz list
+  const handleExitQuiz = () => {
+    setSelectedQuizId(null);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers([]);
+    setIsQuizFinished(false);
+  };
+
+  // Calculate the number of correct answers
+  const score =
+    selectedQuiz?.questions.reduce((total, question, index) => {
+      return total + (selectedAnswers[index] === question.correctAnswer ? 1 : 0);
+    }, 0) || 0;
 
   // Open the modal and clear previous messages.
   const openGenerationForm = () => {
@@ -290,7 +364,7 @@ export default function QuizPage() {
 
       // Add the new quiz to the saved quiz list.
       setQuizzes((current) => [
-        savedQuiz as QuizWithDatabaseId,
+        savedQuiz as Quiz,
         ...current,
       ]);
 
@@ -312,8 +386,8 @@ export default function QuizPage() {
   };
 
   // Delete a saved quiz.
-  const handleDeleteQuiz = async (quiz: QuizWithDatabaseId) => {
-    const quizId = quiz._id || quiz.id;
+  const handleDeleteQuiz = async (quiz: Quiz) => {
+    const quizId = quiz._id;
 
     if (!quizId) {
       setErrorMessage("This quiz does not have a valid ID.");
@@ -334,7 +408,7 @@ export default function QuizPage() {
 
       // Remove the deleted quiz from the page.
       setQuizzes((current) =>
-        current.filter((item) => (item._id || item.id) !== quizId)
+        current.filter((item) => item._id !== quizId)
       );
     } catch {
       setErrorMessage("Failed to delete the quiz. Please try again.");
@@ -348,18 +422,16 @@ export default function QuizPage() {
     <DashboardLayout
       backLabel="Back to Library"
       backTo="/allLearningMaterials"
-   >
+    >
       <div className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6">
         {/* Page heading */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-
             <p className="mt-1 text-sm text-[#6B7568]">
               Test your knowledge with quizzes created from your learning
               materials
             </p>
           </div>
-
         </div>
 
         {/* Show page messages */}
@@ -380,7 +452,8 @@ export default function QuizPage() {
           {/* Left side: Create quiz card */}
           <section className="rounded-2xl border border-[#E9DED4] bg-white p-5 shadow-sm">
             {/* Quiz clipboard*/}
-          <div className="relative mb-5 flex h-24 w-24 items-center justify-center rounded-2xl bg-[#A7C1D0]">              {/* Main quiz clipboard */}
+            <div className="relative mb-5 flex h-24 w-24 items-center justify-center rounded-2xl bg-[#A7C1D0]">
+              {/* Main quiz clipboard */}
               <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#FDF3EC]">
                 <ClipboardCheck
                   size={42}
@@ -388,7 +461,7 @@ export default function QuizPage() {
                   className="text-[#2D4030]"
                 />
               </div>
-                {/* Question mark badge */}
+              {/* Question mark badge */}
               <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#FDF3EC] bg-[#F27A58]">
                 <CircleHelp
                   size={22}
@@ -396,7 +469,6 @@ export default function QuizPage() {
                   className="text-white"
                 />
               </div>
-
             </div>
             <h2 className="text-lg font-bold">Create a Quiz</h2>
 
@@ -417,104 +489,277 @@ export default function QuizPage() {
 
           {/* Right side: Saved quizzes */}
           <section className="min-w-0">
-            <div className="mb-4 flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-[#F27A58]" />
+            {!selectedQuiz ? (
+              <>
+                <div className="mb-4 flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-[#F27A58]" />
 
-              <h2 className="text-xl font-bold">Your Quiz Sets</h2>
+                  <h2 className="text-xl font-bold">Your Quiz Sets</h2>
 
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#2D4030]">
-                {quizzes.length}
-              </span>
-            </div>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#2D4030]">
+                    {quizzes.length}
+                  </span>
+                </div>
 
-            {isLoading ? (
-              <div className="rounded-xl border border-[#E9DED4] bg-white p-6 text-sm text-[#6B7568]">
-                Loading your quizzes...
-              </div>
-            ) : quizSets.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#D8C8BA] bg-white p-8 text-center">
-                <ClipboardList className="mx-auto mb-3 h-10 w-10 text-[#A3B19B]" />
-
-                <h3 className="font-semibold">No quizzes yet</h3>
-
-                <p className="mt-2 text-sm text-[#6B7568]">
-                  Generate your first quiz to see it here
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {quizSets.map((set) => (
-                  <div key={set.topic}>
-                    <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#6B7568]">
-                      {set.topic}
-                    </h3>
-
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                      {set.quizzes.map((quiz) => {
-                        const quizId = quiz._id || quiz.id;
-
-                        return (
-                          <article
-                            key={quizId || `${quiz.topic}-${quiz.title}`}
-                            className="rounded-xl border border-[#E9DED4] bg-white p-5 shadow-sm transition hover:shadow-md"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex min-w-0 items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
-                                  <Brain className="h-5 w-5 text-[#F27A58]" />
-                                </div>
-
-                                <div className="min-w-0">
-                                  <h4 className="break-words font-bold">
-                                    {quiz.title || "Untitled Quiz"}
-                                  </h4>
-
-                                  <p className="mt-1 text-sm text-[#6B7568]">
-                                    {quiz.questions?.length || 0} questions
-                                  </p>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteQuiz(quiz)}
-                                disabled={!quizId || deletingId === quizId}
-                                aria-label="Delete quiz"
-                                className="shrink-0 rounded-lg p-2 text-[#8A6F65] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-
-                            {/* Show the available quiz actions */}
-                            <div className="mt-5 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/quiz/${quizId}`)}
-                                disabled={!quizId}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-medium transition hover:bg-[#FDF3EC] disabled:opacity-50"
-                              >
-                                View Questions
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  navigate(`/quiz/${quizId}/start`)
-                                }
-                                disabled={!quizId}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-[#F27A58] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:opacity-50"
-                              >
-                                Start
-                                <ArrowRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
+                {isLoading ? (
+                  <div className="rounded-xl border border-[#E9DED4] bg-white p-6 text-sm text-[#6B7568]">
+                    Loading your quizzes...
                   </div>
-                ))}
+                ) : quizSets.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#D8C8BA] bg-white p-8 text-center">
+                    <ClipboardList className="mx-auto mb-3 h-10 w-10 text-[#A3B19B]" />
+
+                    <h3 className="font-semibold">No quizzes yet</h3>
+
+                    <p className="mt-2 text-sm text-[#6B7568]">
+                      Generate your first quiz to see it here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {quizSets.map((set) => (
+                      <div key={set.topic}>
+                        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#6B7568]">
+                          {set.topic}
+                        </h3>
+
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                          {set.quizzes.map((quiz) => {
+                            const quizId = quiz._id;
+
+                            return (
+                              <article
+                                key={quizId || `${quiz.topic}-${quiz.title}`}
+                                className="rounded-xl border border-[#E9DED4] bg-white p-5 shadow-sm transition hover:shadow-md"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex min-w-0 items-start gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
+                                      <Brain className="h-5 w-5 text-[#F27A58]" />
+                                    </div>
+
+                                    <div className="min-w-0">
+                                      <h4 className="break-words font-bold">
+                                        {quiz.title || "Untitled Quiz"}
+                                      </h4>
+
+                                      <p className="mt-1 text-sm text-[#6B7568]">
+                                        {quiz.questions?.length || 0} questions
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteQuiz(quiz)}
+                                    disabled={!quizId || deletingId === quizId}
+                                    aria-label="Delete quiz"
+                                    className="shrink-0 rounded-lg p-2 text-[#8A6F65] transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+
+                                {/* Show the available quiz actions */}
+                                <div className="mt-5 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/quiz/${quizId}`)}
+                                    disabled={!quizId}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-medium transition hover:bg-[#FDF3EC] disabled:opacity-50"
+                                  >
+                                    View Questions
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartQuiz(quizId)}
+                                    disabled={!quizId}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F27A58] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:opacity-50"
+                                  >
+                                    Start
+                                    <ArrowRight className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-[#E9DED4] bg-white p-5 shadow-sm sm:p-7">
+                {!isQuizFinished ? (
+                  <>
+                    {/* Quiz heading */}
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-xl font-bold">
+                          {selectedQuiz.title}
+                        </h2>
+
+                        <p className="mt-1 text-sm text-[#6B7568]">
+                          Question {currentQuestionIndex + 1} of{" "}
+                          {selectedQuiz.questions.length}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleExitQuiz}
+                        className="rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-medium transition hover:bg-[#FDF3EC]"
+                      >
+                        Exit Quiz
+                      </button>
+                    </div>
+
+                    {/* Question progress */}
+                    <div className="mb-7 h-2 overflow-hidden rounded-full bg-[#F1E8E0]">
+                      <div
+                        className="h-full rounded-full bg-[#F27A58] transition-all"
+                        style={{
+                          width: `${
+                            ((currentQuestionIndex + 1) /
+                              selectedQuiz.questions.length) *
+                            100
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    {currentQuestion ? (
+                      <>
+                        {/* Display the current question */}
+                        <h3 className="mb-6 text-lg font-semibold leading-7">
+                          {currentQuestion.question}
+                        </h3>
+
+                        {/* Display the answer options */}
+                        <div className="space-y-3">
+                          {currentQuestion.options.map((option, index) => {
+                            const isSelected =
+                              selectedAnswers[currentQuestionIndex] === option;
+
+                            return (
+                              <button
+                                key={`${option}-${index}`}
+                                type="button"
+                                onClick={() => handleSelectAnswer(option)}
+                                className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${
+                                  isSelected
+                                    ? "border-[#F27A58] bg-[#FFF1EB] font-semibold"
+                                    : "border-[#E9DED4] hover:border-[#F27A58] hover:bg-[#FDF8F4]"
+                                }`}
+                              >
+                                <span
+                                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                                    isSelected
+                                      ? "bg-[#F27A58] text-white"
+                                      : "bg-[#F1E8E0] text-[#2D4030]"
+                                  }`}
+                                >
+                                  {String.fromCharCode(65 + index)}
+                                </span>
+
+                                <span>{option}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Question navigation buttons */}
+                        <div className="mt-8 flex items-center justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={handlePreviousQuestion}
+                            disabled={currentQuestionIndex === 0}
+                            className="rounded-lg border border-[#D8C8BA] px-4 py-2.5 text-sm font-semibold transition hover:bg-[#FDF3EC] disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Previous
+                          </button>
+
+                          {currentQuestionIndex ===
+                          selectedQuiz.questions.length - 1 ? (
+                            <button
+                              type="button"
+                              onClick={handleFinishQuiz}
+                              disabled={
+                                !selectedAnswers[currentQuestionIndex]
+                              }
+                              className="rounded-lg bg-[#2D4030] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3c5540] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Finish Quiz
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleNextQuestion}
+                              disabled={
+                                !selectedAnswers[currentQuestionIndex]
+                              }
+                              className="inline-flex items-center gap-2 rounded-lg bg-[#F27A58] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Next
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-[#6B7568]">
+                        This quiz does not contain any questions
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Quiz result */}
+                    <div className="py-8 text-center">
+                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#FDF3EC]">
+                        <ClipboardCheck
+                          size={34}
+                          className="text-[#F27A58]"
+                        />
+                      </div>
+
+                      <h2 className="text-2xl font-bold">Quiz Completed!</h2>
+
+                      <p className="mt-2 text-sm text-[#6B7568]">
+                        You have completed {selectedQuiz.title}
+                      </p>
+
+                      <div className="mx-auto mt-7 max-w-xs rounded-xl bg-[#FDF3EC] p-6">
+                        <p className="text-sm text-[#6B7568]">
+                          Your Score
+                        </p>
+
+                        <p className="mt-2 text-4xl font-bold text-[#F27A58]">
+                          {score} / {selectedQuiz.questions.length}
+                        </p>
+
+                        <p className="mt-2 text-sm text-[#6B7568]">
+                          {selectedQuiz.questions.length > 0
+                            ? Math.round(
+                                (score / selectedQuiz.questions.length) * 100
+                              )
+                            : 0}
+                          % correct answers
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleExitQuiz}
+                        className="mt-7 rounded-lg bg-[#2D4030] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3c5540]"
+                      >
+                        Back to Quiz Sets
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </section>
@@ -779,7 +1024,7 @@ export default function QuizPage() {
                   disabled={isGenerating}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F27A58] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <ClipboardCheck  className="h-4 w-4" />
+                  <ClipboardCheck className="h-4 w-4" />
                   {isGenerating ? "Generating..." : "Generate Quiz"}
                 </button>
               </div>

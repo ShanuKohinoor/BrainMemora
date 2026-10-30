@@ -1,4 +1,3 @@
-
 import type { Request, Response } from "express";
 import mongoose from "mongoose";
 import { quizModel } from "../models/quiz.js";
@@ -15,25 +14,22 @@ import { extractImageText } from "../utils/imageTextExtractor.js";
 import { transcribedMedia } from "../utils/whisperTranscriber.js";
 
 
-
-
-
-// Generate quiz questions from selected learning materials.
+// Generate quiz questions from selected learning materials
 export const generateQuiz = async (
   req: Request,
   res: Response
 ) => {
-  // Check that the user is logged in.
+  // Check if the user is logged in
   if (!req.userId) {
     throw new UnauthorizedError("Please login first");
   }
 
   const userId = req.userId;
 
-  // Read the selected material IDs and requested question count.
+  // Get the selected material IDs and question count
   const { materialIds, numberOfQuestions = 5 } = req.body;
 
-  // Validate the selected material IDs.
+  // Check if the selected material IDs are valid
   if (
     !Array.isArray(materialIds) ||
     materialIds.length === 0 ||
@@ -48,7 +44,7 @@ export const generateQuiz = async (
     );
   }
 
-  // Validate the requested number of questions.
+  // Check if the question count is between 1 and 20
   if (
     !Number.isInteger(numberOfQuestions) ||
     numberOfQuestions < 1 ||
@@ -59,24 +55,24 @@ export const generateQuiz = async (
     );
   }
 
-  // Find only materials belonging to the logged-in user.
+  // Find materials that belong to the logged-in user
   const materials = await learningMaterialModel.find({
     _id: { $in: materialIds },
     userId,
   });
 
-  // Make sure every selected material was found.
+  // Check if all selected materials were found
   if (materials.length !== new Set(materialIds).size) {
     throw new NotFoundError(
       "One or more selected learning materials were not found"
     );
   }
 
-  // Collect readable text from the selected materials.
+  // Store the extracted text from all materials
   const materialTexts: string[] = [];
 
   for (const material of materials) {
-    // Support the same file types as Flashcards.
+    // Check if the material type is supported
     if (
       material.type !== "pdf" &&
       material.type !== "image" &&
@@ -88,29 +84,29 @@ export const generateQuiz = async (
       );
     }
 
-    // Reuse text already extracted and saved in MongoDB.
+    // Use the text already saved in MongoDB
     let extractedText =
       material.extractedText?.trim() ?? "";
 
-    // Check whether the saved text is only a PDF page marker.
+    // Check if the saved text contains only a PDF page marker
     const isPageMarker =
       /^--\s*\d+\s+of\s+\d+\s+--$/i.test(extractedText);
 
-    // Extract text again if it is missing or only a page marker.
+    // Extract the text again if it is missing or incomplete
     if (!extractedText || isPageMarker) {
-      // The original uploaded file must exist in S3.
+      // Check if the original file exists in S3
       if (!material.fileKey) {
         throw new BadRequest(
           `"${material.title}" has no uploaded file`
         );
       }
 
-      // Download the original file from S3.
+      // Download the file from S3
       const fileBuffer = await downloadFileFromS3(
         material.fileKey
       );
 
-      // Extract text using the method for this material type.
+      // Extract text based on the material type
       if (material.type === "pdf") {
         extractedText = await extractPdfText(fileBuffer);
       } else if (material.type === "image") {
@@ -119,36 +115,36 @@ export const generateQuiz = async (
         extractedText = await transcribedMedia(fileBuffer);
       }
 
-      // Stop if no readable text was extracted.
+      // Check if any readable text was found
       if (!extractedText.trim()) {
         throw new BadRequest(
           `No readable text was found in "${material.title}"`
         );
       }
 
-      // Save the extracted text for future use.
+      // Save the extracted text for future use
       material.extractedText = extractedText;
       await material.save();
     }
 
-    // Add this material's text to the collection.
+    // Add the extracted text to the collection
     materialTexts.push(extractedText);
   }
 
-  // Combine the text from all selected materials.
+  // Combine the text from all selected materials
   const combinedText = materialTexts.join("\n\n").trim();
 
-  // Generate quiz questions from the combined text.
+  // Generate questions from the combined text
   const generatedQuestions = quizGenerator(combinedText);
 
-  // Stop if the generator cannot create questions.
+  // Check if any questions were generated
   if (generatedQuestions.length === 0) {
     throw new BadRequest(
       "No quiz questions could be generated from these files. Try materials containing explanatory sentences."
     );
   }
 
-  // Return only the requested number of questions.
+  // Return the requested number of questions
   const questions = generatedQuestions.slice(
     0,
     numberOfQuestions
@@ -158,24 +154,33 @@ export const generateQuiz = async (
 };
 
 
-
-
-// Create a new quiz.
+// Create a new quiz
 export const createQuiz = async (req: Request, res: Response) => {
   try {
+    // Check if the user is logged in
+    if (!req.userId) {
+      throw new UnauthorizedError("Please login first");
+    }
+
+    const userId = req.userId;
+
     const { topic, title, sources, questions } = req.body;
 
-    // Check that the required quiz information is provided.
+    // Check if all required quiz details are provided
     if (
-      !topic || !title || !Array.isArray(sources) || sources.length === 0 || !Array.isArray(questions) ||
+      !topic ||
+      !title ||
+      !Array.isArray(sources) ||
+      sources.length === 0 ||
+      !Array.isArray(questions) ||
       questions.length === 0
     ) {
       return res.status(400).json({
-        message: "Topic, title, sources, and questions are required.",
+        message: "Topic, title, sources, and questions are required",
       });
     }
 
-    // Check that every question has its required fields.
+    // Check if every question has valid fields
     const validQuestions = questions.every(
       (item: any) =>
         typeof item.question === "string" &&
@@ -189,11 +194,11 @@ export const createQuiz = async (req: Request, res: Response) => {
     if (!validQuestions) {
       return res.status(400).json({
         message:
-          "Each question must have a question, at least two options, and a correct answer included in those options.",
+          "Each question must have a question, at least two options, and a correct answer included in those options",
       });
     }
 
-    // Check that every source has a valid type and ID.
+    // Check if every source has a valid type and ID
     const validSources = sources.every(
       (source: any) =>
         typeof source.sourceId === "string" &&
@@ -203,20 +208,11 @@ export const createQuiz = async (req: Request, res: Response) => {
 
     if (!validSources) {
       return res.status(400).json({
-        message: "Each source must have a valid sourceId and sourceType.",
+        message: "Each source must have a valid sourceId and sourceType",
       });
     }
 
-    // Get the logged-in user's ID from the authentication middleware.
-    const userId = (req as any).user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authentication required.",
-      });
-    }
-
-    // Save the new quiz in MongoDB.
+    // Save the quiz in MongoDB
     const quiz = await quizModel.create({
       userId,
       topic,
@@ -226,58 +222,60 @@ export const createQuiz = async (req: Request, res: Response) => {
     });
 
     return res.status(201).json({
-      message: "Quiz created successfully.",
+      message: "Quiz created successfully",
       quiz,
     });
   } catch (error) {
     console.error("Create quiz error:", error);
 
     return res.status(500).json({
-      message: "Failed to create quiz.",
+      message: "Failed to create quiz",
     });
   }
 };
 
-// Get all quizzes belonging to the logged-in user.
+
+// Get all quizzes belonging to the logged-in user
 export const getAllQuizzes = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authentication required.",
-      });
+    // Check if the user is logged in
+    if (!req.userId) {
+      throw new UnauthorizedError("Please login first");
     }
 
+    const userId = req.userId;
+
+    // Find all quizzes belonging to this user
     const quizzes = await quizModel
       .find({ userId })
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
-      message: "Quizzes fetched successfully.",
+      message: "Quizzes fetched successfully",
       quizzes,
     });
   } catch (error) {
     console.error("Get quizzes error:", error);
 
     return res.status(500).json({
-      message: "Failed to fetch quizzes.",
+      message: "Failed to fetch quizzes",
     });
   }
 };
 
-// Get one quiz by its ID.
+
+// Get one quiz by its ID
 export const getQuizById = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
-    const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authentication required.",
-      });
+    // Check if the user is logged in
+    if (!req.userId) {
+      throw new UnauthorizedError("Please login first");
     }
 
+    const userId = req.userId;
+    const { id } = req.params;
+
+    // Find the quiz that belongs to this user
     const quiz = await quizModel.findOne({
       _id: id,
       userId,
@@ -285,37 +283,37 @@ export const getQuizById = async (req: Request, res: Response) => {
 
     if (!quiz) {
       return res.status(404).json({
-        message: "Quiz not found.",
+        message: "Quiz not found",
       });
     }
 
     return res.status(200).json({
-      message: "Quiz fetched successfully.",
+      message: "Quiz fetched successfully",
       quiz,
     });
   } catch (error) {
     console.error("Get quiz error:", error);
 
     return res.status(500).json({
-      message: "Failed to fetch quiz.",
+      message: "Failed to fetch quiz",
     });
   }
 };
 
-// Update an existing quiz.
+
+// Update an existing quiz
 export const updateQuiz = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    // Check if the user is logged in
+    if (!req.userId) {
+      throw new UnauthorizedError("Please login first");
+    }
+
+    const userId = req.userId;
     const { id } = req.params;
     const { topic, title, sources, questions } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authentication required.",
-      });
-    }
-
-    // Build an update object using only fields supplied by the client.
+    // Store only the fields provided by the user
     const updates: Record<string, unknown> = {};
 
     if (topic !== undefined) updates.topic = topic;
@@ -323,12 +321,14 @@ export const updateQuiz = async (req: Request, res: Response) => {
     if (sources !== undefined) updates.sources = sources;
     if (questions !== undefined) updates.questions = questions;
 
+    // Check if there is anything to update
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
-        message: "Provide at least one field to update.",
+        message: "Provide at least one field to update",
       });
     }
 
+    // Update the quiz that belongs to this user
     const quiz = await quizModel.findOneAndUpdate(
       { _id: id, userId },
       { $set: updates },
@@ -337,35 +337,36 @@ export const updateQuiz = async (req: Request, res: Response) => {
 
     if (!quiz) {
       return res.status(404).json({
-        message: "Quiz not found.",
+        message: "Quiz not found",
       });
     }
 
     return res.status(200).json({
-      message: "Quiz updated successfully.",
+      message: "Quiz updated successfully",
       quiz,
     });
   } catch (error) {
     console.error("Update quiz error:", error);
 
     return res.status(500).json({
-      message: "Failed to update quiz.",
+      message: "Failed to update quiz",
     });
   }
 };
 
-// Delete a quiz.
+
+// Delete a quiz
 export const deleteQuiz = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
-    const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({
-        message: "Authentication required.",
-      });
+    // Check if the user is logged in
+    if (!req.userId) {
+      throw new UnauthorizedError("Please login first");
     }
 
+    const userId = req.userId;
+    const { id } = req.params;
+
+    // Delete only the quiz that belongs to this user
     const quiz = await quizModel.findOneAndDelete({
       _id: id,
       userId,
@@ -373,21 +374,18 @@ export const deleteQuiz = async (req: Request, res: Response) => {
 
     if (!quiz) {
       return res.status(404).json({
-        message: "Quiz not found.",
+        message: "Quiz not found",
       });
     }
 
     return res.status(200).json({
-      message: "Quiz deleted successfully.",
+      message: "Quiz deleted successfully",
     });
   } catch (error) {
     console.error("Delete quiz error:", error);
 
     return res.status(500).json({
-      message: "Failed to delete quiz.",
+      message: "Failed to delete quiz",
     });
   }
 };
-
-
-

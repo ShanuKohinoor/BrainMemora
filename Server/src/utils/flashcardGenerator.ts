@@ -14,13 +14,21 @@ import type { FlashcardBody } from "../types/flashcard.types.js";
   // Remove extra spaces from the answer
       let formattedAnswer = answer.trim().replace(/[.!?]+$/, "");
 
+      // Skip empty or excessively long answers
+      if (!formattedAnswer || formattedAnswer.length > 300) {
+        return;
+      }
+
   // Capitalize the first character
       formattedAnswer = formattedAnswer.charAt(0).toUpperCase() + formattedAnswer.slice(1)
 
   // Add a full stop at the end of the answer
       formattedAnswer += ".";
 
-     const isDuplicate = flashcards.some((card)=>card.question === question && card.answer === formattedAnswer)
+     const isDuplicate = flashcards.some(
+      (card) =>
+        card.question.toLowerCase() === question.toLowerCase() &&
+        (card.answer ?? "").toLowerCase() === formattedAnswer.toLowerCase()     )
     
      // Add the card only when it is not duplicated
       if(!isDuplicate){
@@ -28,9 +36,9 @@ import type { FlashcardBody } from "../types/flashcard.types.js";
       }
     }
 
-// Generate flashcards from the text of a note.
+// Generate flashcards from the text of a note
 export function flashcardGenerator(content: string) {
-  // Split the note into sentences and remove extra spaces.
+  // Split the note into sentences and remove extra spaces
   const sentences = content
      .split(/[.!?]+(?:\s+|$)|\r?\n+/)
     .map((sentence) => sentence.trim())
@@ -42,318 +50,338 @@ export function flashcardGenerator(content: string) {
   // Store the generated flashcards
   const flashcards: Pick<FlashcardBody, "question" | "answer">[] = [];
 
-  // Check each sentence.
+  // Check each sentence
   for (const sentence of sentences) {
-    // Rule 1: Recognize sentences containing 'is' 
-    const parts = sentence.split(/\s+is\s+/i);
+    
+        // Skip sentences that are already questions
+    if (/^(what|who|where|when|why|how)\b/i.test(sentence)) {
+      continue;
+    }
 
-    if (parts.length === 2) {
-      const term = parts[0]?.trim();
-      const definition = parts[1]?.trim().replace(/[.!?]+$/, "");
+    // Skip sentences that begin with unclear pronouns
+    if (/^(it|this|that|these|those|they|he|she|we|you|i|there)\b/i.test(sentence)) {
+      continue;
+    }
 
-      // Skip sentences with missing information
+    // Rule 1: Recognize sentences containing 'is'
+    const isMatch = sentence.match(/^(.+?)\s+is\s+(.+)$/i);
+
+    if (isMatch) {
+      const term = isMatch[1]?.trim();
+      const definition = isMatch[2]?.trim();
+
       if (!term || !definition) {
         continue;
       }
 
-      // Create a question and its answer
       const question = `What is ${term}?`;
       const answer = definition;
 
-      // Check duplicate and add the flashcard to the array
-      addUniqueFlashcard(flashcards, question, answer );
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
 
-    // Rule 2: Recognize sentences containing 'are'.
+    // Rule 2: Recognize sentences containing 'are'
+    const areMatch = sentence.match(/^(.+?)\s+are\s+(.+)$/i);
 
-    const areParts = sentence.split(/\s+are\s+/i)
+    if (areMatch) {
+      const term = areMatch[1]?.trim();
+      const definition = areMatch[2]?.trim();
 
-    if(areParts.length === 2){
-      const term = areParts[0]?.trim();
-      const definition = areParts[1]?.trim()
-      if(!term || !definition){
-        continue
+      if (!term || !definition) {
+        continue;
       }
 
-      const question = `What are ${term}?`
-      const answer = definition
+      const question = `What are ${term}?`;
+      const answer = definition;
 
-      addUniqueFlashcard(flashcards,question,answer)
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
 
-    // Rule 3: Recognize sentences containing 'uses'.
-    const usesParts = sentence.split(/\s+uses\s+/i);
+    // Rule 3: Recognize sentences containing 'uses'
+    const usesMatch = sentence.match(/^(.+?)\s+uses\s+(.+)$/i);
 
-    if (usesParts.length === 2) {
-      const subject = usesParts[0]?.trim();
-      const information = usesParts[1]?.trim().replace(/[.!?]+$/, "");
+    if (usesMatch) {
+      const subject = usesMatch[1]?.trim();
+      const information = usesMatch[2]?.trim();
 
-      // Skip sentences with missing information.
       if (!subject || !information) {
         continue;
       }
 
-      // Create a question and its answer
       const question = `What does ${subject} use?`;
       const answer = information;
 
-      // Check duplicate and add the flashcard to the array
-      addUniqueFlashcard(flashcards, question, answer );
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
     // Rule 4: Recognize sentences containing 'has'
-    const hasParts = sentence.split(/\s+has\s+/i);
+    const hasMatch = sentence.match(/^(.+?)\s+has\s+(.+)$/i);
 
-    if (hasParts.length === 2) {
-      const subject = hasParts[0]?.trim();
-      const information = hasParts[1]?.trim().replace(/[.!?]+$/, "");
+    if (hasMatch) {
+      const subject = hasMatch[1]?.trim();
+      const information = hasMatch[2]?.trim();
 
-      // Skip sentences with missing information.
       if (!subject || !information) {
         continue;
       }
 
-      // Create a question and its answer.
       const question = `What does ${subject} have?`;
       const answer = information;
 
-      // Check duplicate and add the flashcard to the array
-      addUniqueFlashcard(flashcards, question, answer );
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
 
-          // Rule 5: Recognize sentences containing 'was'.
+    // Rule 5: Recognize sentences containing 'was'
+    const wasMatch = sentence.match(/^(.+?)\s+was\s+(.+)$/i);
 
-    const wasParts = sentence.split(/\s+was\s+/i)
+    if (wasMatch) {
+      const term = wasMatch[1]?.trim();
+      const definition = wasMatch[2]?.trim();
 
-    if(wasParts.length === 2){
-      const term = wasParts[0]?.trim();
-      const definition = wasParts[1]?.trim()
-      if(!term || !definition){
-        continue
+      if (!term || !definition) {
+        continue;
       }
 
-      const question = `What was ${term}?`
-      const answer = definition
+      const question = `What was ${term}?`;
+      const answer = definition;
 
-      addUniqueFlashcard(flashcards,question,answer)
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
 
-    // Rule 6: Recognize sentences containing 'were'.
+    // Rule 6: Recognize sentences containing 'were'
+    const wereMatch = sentence.match(/^(.+?)\s+were\s+(.+)$/i);
 
-    const wereParts = sentence.split(/\s+were\s+/i)
+    if (wereMatch) {
+      const term = wereMatch[1]?.trim();
+      const definition = wereMatch[2]?.trim();
 
-    if(wereParts.length === 2){
-      const term = wereParts[0]?.trim();
-      const definition = wereParts[1]?.trim()
-      if(!term || !definition){
-        continue
+      if (!term || !definition) {
+        continue;
       }
 
-      const question = `What were ${term}?`
-      const answer = definition
+      const question = `What were ${term}?`;
+      const answer = definition;
 
-      addUniqueFlashcard(flashcards,question,answer)
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
   
-      // Rule 7: Recognize sentences containing 'will be'.
+    // Rule 7: Recognize sentences containing 'will be'
+    const willbeMatch = sentence.match(/^(.+?)\s+will be\s+(.+)$/i);
 
-    const willbeParts = sentence.split(/\s+will be\s+/i)
+    if (willbeMatch) {
+      const term = willbeMatch[1]?.trim();
+      const definition = willbeMatch[2]?.trim();
 
-    if(willbeParts.length === 2){
-      const term = willbeParts[0]?.trim();
-      const definition = willbeParts[1]?.trim()
-      if(!term || !definition){
-        continue
+      if (!term || !definition) {
+        continue;
       }
 
-      const question = `What will ${term} be?`
-      const answer = definition
+      const question = `What will ${term} be?`;
+      const answer = definition;
 
-      addUniqueFlashcard(flashcards,question,answer)
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 8: Recognize sentences containing 'can'
+    const canMatch = sentence.match(/^(.+?)\s+can\s+(.+)$/i);
+
+    if (canMatch) {
+      const term = canMatch[1]?.trim();
+      const definition = canMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What can ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 9: Recognize sentences containing 'should'
+    const shouldMatch = sentence.match(/^(.+?)\s+should\s+(.+)$/i);
+
+    if (shouldMatch) {
+      const term = shouldMatch[1]?.trim();
+      const definition = shouldMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What should ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 10: Recognize sentences containing 'could'
+    const couldMatch = sentence.match(/^(.+?)\s+could\s+(.+)$/i);
+
+    if (couldMatch) {
+      const term = couldMatch[1]?.trim();
+      const definition = couldMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What could ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 11: Recognize sentences containing 'would'
+    const wouldMatch = sentence.match(/^(.+?)\s+would\s+(.+)$/i);
+
+    if (wouldMatch) {
+      const term = wouldMatch[1]?.trim();
+      const definition = wouldMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What would ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+    // Rule 12: Recognize sentences containing 'do'
+    const doMatch = sentence.match(/^(.+?)\s+do\s+(.+)$/i);
+
+    if (doMatch) {
+      const term = doMatch[1]?.trim();
+      const definition = doMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What do ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 13: Recognize sentences containing 'does'
+    const doesMatch = sentence.match(/^(.+?)\s+does\s+(.+)$/i);
+
+    if (doesMatch) {
+      const term = doesMatch[1]?.trim();
+      const definition = doesMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What does ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 14: Recognize sentences containing 'did'
+    const didMatch = sentence.match(/^(.+?)\s+did\s+(.+)$/i);
+
+    if (didMatch) {
+      const term = didMatch[1]?.trim();
+      const definition = didMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What did ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
+    }
+
+
+
+    // Rule 15: Recognize sentences containing 'must'
+    const mustMatch = sentence.match(/^(.+?)\s+must\s+(.+)$/i);
+
+    if (mustMatch) {
+      const term = mustMatch[1]?.trim();
+      const definition = mustMatch[2]?.trim();
+
+      if (!term || !definition) {
+        continue;
+      }
+
+      const question = `What must ${term} do?`;
+      const answer = definition;
+
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
 
 
 
-    // Rule 8: Recognize sentences containing 'can'.
+    // Rule 16: Recognize sentences containing 'may'
+    const mayMatch = sentence.match(/^(.+?)\s+may\s+(.+)$/i);
 
-    const canParts = sentence.split(/\s+can\s+/i)
+    if (mayMatch) {
+      const term = mayMatch[1]?.trim();
+      const definition = mayMatch[2]?.trim();
 
-    if(canParts.length === 2){
-      const term = canParts[0]?.trim();
-      const definition = canParts[1]?.trim()
-      if(!term || !definition){
-        continue
+      if (!term || !definition) {
+        continue;
       }
 
-      const question = `What can ${term} do?`
-      const answer = definition
+      const question = `What may ${term} do?`;
+      const answer = definition;
 
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-
-    // Rule 9: Recognize sentences containing 'should'.
-
-    const shouldParts = sentence.split(/\s+should\s+/i)
-
-    if(shouldParts.length === 2){
-      const term = shouldParts[0]?.trim();
-      const definition = shouldParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What should ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-
-
-      // Rule 10: Recognize sentences containing 'could'.
-
-    const couldParts = sentence.split(/\s+could\s+/i)
-
-    if(couldParts.length === 2){
-      const term = couldParts[0]?.trim();
-      const definition = couldParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What could ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-    // Rule 11: Recognize sentences containing 'would'.
-    const wouldParts = sentence.split(/\s+would\s+/i)
-
-    if(wouldParts.length === 2){
-      const term = wouldParts[0]?.trim();
-      const definition = wouldParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What would ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-      // Rule 12: Recognize sentences containing 'do'.
-    const doParts = sentence.split(/\s+do\s+/i)
-
-    if(doParts.length === 2){
-      const term = doParts[0]?.trim();
-      const definition = doParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What do ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-    // Rule 13: Recognize sentences containing 'does'.
-    const doesParts = sentence.split(/\s+does\s+/i)
-
-    if(doesParts.length === 2){
-      const term = doesParts[0]?.trim();
-      const definition = doesParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What does ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-      // Rule 14: Recognize sentences containing 'did'.
-    const didParts = sentence.split(/\s+did\s+/i)
-
-    if(didParts.length === 2){
-      const term = didParts[0]?.trim();
-      const definition = didParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What did ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-    // Rule 15: Recognize sentences containing 'must'.
-    const mustdParts = sentence.split(/\s+must\s+/i)
-
-    if(mustdParts.length === 2){
-      const term = mustdParts[0]?.trim();
-      const definition = mustdParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What must ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
-    }
-
-
-
-
-    // Rule 16: Recognize sentences containing 'may'.
-    const mayParts = sentence.split(/\s+may\s+/i)
-
-    if(mayParts.length === 2){
-      const term = mayParts[0]?.trim();
-      const definition = mayParts[1]?.trim()
-      if(!term || !definition){
-        continue
-      }
-
-      const question = `What may ${term} do?`
-      const answer = definition
-
-      addUniqueFlashcard(flashcards,question,answer)
+      addUniqueFlashcard(flashcards, question, answer);
+      continue;
     }
 
   }
 
 
-  // Return all generated flashcards.
+  // Return all generated flashcards
   return flashcards;
 }
