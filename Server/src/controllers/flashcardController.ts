@@ -265,11 +265,34 @@ export const generateFlashcardsFromMaterials = async (
     );
   }
 
-  // Keep only the requested number of flashcards.
-  const selectedFlashcards = generatedFlashcards.slice(
-    0,
-    numberOfCards
-  );
+    // Find existing flashcards for this user and topic.
+    const existingFlashcards = await flashcardModel.find({
+      userId,
+      topic: materials[0]!.topic,
+    });
+
+    // Remove questions that already exist.
+    const uniqueFlashcards = generatedFlashcards.filter(
+      (flashcard) =>
+        !existingFlashcards.some(
+          (existing) =>
+            existing.question.trim().toLowerCase() ===
+            flashcard.question.trim().toLowerCase()
+        )
+    );
+
+    // Keep only the requested number of new flashcards.
+    const selectedFlashcards = uniqueFlashcards.slice(
+      0,
+      numberOfCards
+    );
+
+    if (selectedFlashcards.length === 0) {
+      throw new BadRequest(
+        "All generated questions already exist for this topic."
+      );
+    }
+
 
   // Link each flashcard to the selected learning materials.
   const sources = materials.map((material) => ({

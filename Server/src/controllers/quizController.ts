@@ -14,6 +14,7 @@ import { extractImageText } from "../utils/imageTextExtractor.js";
 import { transcribedMedia } from "../utils/whisperTranscriber.js";
 
 
+
 // Generate quiz questions from selected learning materials
 export const generateQuiz = async (
   req: Request,
@@ -144,14 +145,57 @@ export const generateQuiz = async (
     );
   }
 
+  // Find existing quizzes for this user and topic.
+  const existingQuizzes = await quizModel.find({
+    userId,
+    topic: materials[0]!.topic,
+  });
+
+  // Get all previously used questions from existing quizzes.
+  const existingQuestions = new Set(
+    existingQuizzes.flatMap((quiz) =>
+      quiz.questions.map((item) =>
+        item.question.trim().toLowerCase().replace(/\s+/g, " ")
+      )
+    )
+  );
+
+  // Remove questions that already exist.
+  const uniqueQuestions = generatedQuestions.filter((generated) => {
+    const normalizedQuestion = generated.question
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+    if (existingQuestions.has(normalizedQuestion)) {
+      return false;
+    }
+
+    existingQuestions.add(normalizedQuestion);
+
+    return true;
+  });
+
+  // Check if any new questions are available
+  if (uniqueQuestions.length === 0) {
+    throw new BadRequest(
+      "All generated questions already exist for this topic."
+    );
+  }
+
   // Return the requested number of questions
-  const questions = generatedQuestions.slice(
+  const questions = uniqueQuestions.slice(
     0,
     numberOfQuestions
   );
 
   return res.status(200).json({ questions });
 };
+
+
+
+
+
 
 
 // Create a new quiz

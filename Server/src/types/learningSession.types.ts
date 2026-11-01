@@ -5,6 +5,12 @@ export interface LearningSession{
     title:string;
     description?:string;
     order:number;
+
+    quizIds:string[];
+    flashcardIds:string[];
+
+    quizCompleted:boolean;
+    flashcardCompleted:boolean;
     isUnlocked:boolean;
     isCompleted:boolean
     createdAt:Date;

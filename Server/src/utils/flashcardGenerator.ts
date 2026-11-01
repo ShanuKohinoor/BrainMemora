@@ -25,11 +25,11 @@ import type { FlashcardBody } from "../types/flashcard.types.js";
   // Add a full stop at the end of the answer
       formattedAnswer += ".";
 
-     const isDuplicate = flashcards.some(
-      (card) =>
-        card.question.toLowerCase() === question.toLowerCase() &&
-        (card.answer ?? "").toLowerCase() === formattedAnswer.toLowerCase()     )
-    
+      const isDuplicate = flashcards.some(
+        (card) =>
+          card.question.trim().toLowerCase() === question.trim().toLowerCase()
+      );
+
      // Add the card only when it is not duplicated
       if(!isDuplicate){
         flashcards.push({question,answer:formattedAnswer})

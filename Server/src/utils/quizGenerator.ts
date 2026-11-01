@@ -9,7 +9,7 @@ export function quizGenerator(content: string): QuizQuestion[] {
     .filter((sentence) => sentence.length > 0);
 
   const questions: QuizQuestion[] = [];
-
+  
   // Store subjects and their descriptions
   const definitions: {
     subject: string;

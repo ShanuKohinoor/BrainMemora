@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Brain,
   Plus,
@@ -12,7 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  History
+  History,
+  GraduationCap
 } from "lucide-react";
 
 import { DashboardLayout } from "../components/DashboardLayout";
@@ -54,6 +56,7 @@ export default function QuizPage() {
     (state) => state.learningMaterials.materials
   ) as MaterialForQuiz[];
 
+  const navigate = useNavigate()
   // Store saved quizzes and loading states
   //Store the quizzes already saved by the user
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -530,6 +533,15 @@ export default function QuizPage() {
               materials
             </p>
           </div>
+                          <button
+                    type="button"
+                    onClick={() => navigate("/learning-sessions")}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
+                >
+                    <GraduationCap size={20} />
+                    Learning Sessions
+                </button>
+
         </div>
 
         {/* Show page messages */}

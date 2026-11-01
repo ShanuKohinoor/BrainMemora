@@ -10,8 +10,9 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  GraduationCap
 } from "lucide-react";
-
+import { useNavigate } from "react-router";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { fetchNotes } from "../features/notes/noteSlice";
@@ -47,6 +48,7 @@ const materialTypes: { value: MaterialType; label: string }[] = [
 export default function Flashcards() {
   const dispatch = useAppDispatch();
 
+  const navigate = useNavigate()
   const notes = useAppSelector((state) => state.notes.notes);
   const materials = useAppSelector(
     (state) => state.learningMaterials.materials
@@ -499,6 +501,9 @@ export default function Flashcards() {
       <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6 lg:px-8">
         {/* Main page heading. */}
         <header className="mb-8">
+         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+
           <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
             LEARN * REVISE * REMEMBER
           </p>
@@ -506,11 +511,24 @@ export default function Flashcards() {
           <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
             Turn Learning into Lasting Memory
           </h1>
-
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74675F] sm:text-base">
             Create flashcards from your learning materials and practise
             recalling what you know.
           </p>
+        </div>
+
+        <button
+                type="button"
+                onClick={() => navigate("/learning-sessions")}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
+            >
+            <GraduationCap size={20} />
+                  Learning Sessions
+         </button>
+
+        </div>
+
+          
         </header>
 
         {/* Error feedback */}
