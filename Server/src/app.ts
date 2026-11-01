@@ -12,6 +12,7 @@ import cloudRoute from "./routes/cloudRoute.js"
 import teachBackRoute from "./routes/teachBack.js"
 import flashcardRoute from "./routes/flashcardRoute.js"
 import quizRoute from "./routes/quizRoute.js"
+import quizResultRoute from "./routes/quizResultsRoute.js"
 import rateLimit from "express-rate-limit"
 
 
@@ -72,6 +73,9 @@ app.use("/api/flashcard",flashcardRoute)
 
 // Connect Quiz route
 app.use("/api/quiz",quizRoute)
+
+// QuizResult
+app.use("/api/quizResult",quizResultRoute)
 
 // Connect ErrorHandling Middleware
 app.use(errorHandlingMiddleware)

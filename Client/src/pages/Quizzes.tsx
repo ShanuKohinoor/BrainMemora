@@ -1,10 +1,9 @@
-
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
 import {
   Brain,
   Plus,
   ArrowRight,
+  ArrowLeft,
   Trash2,
   ClipboardList,
   ClipboardCheck,
@@ -12,6 +11,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
+  History
 } from "lucide-react";
 
 import { DashboardLayout } from "../components/DashboardLayout";
@@ -20,8 +21,11 @@ import {
   deleteQuiz,
   generateQuizQuestions,
   createQuiz,
+  showQuizResult,
+  getQuizHistory
 } from "../services/quizService";
 import type { Quiz } from "../types/quiz.types";
+import type { QuizResult } from "../types/quizResult.types";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
 import type { MaterialType } from "../types/learningMaterial.types";
@@ -43,7 +47,6 @@ type MaterialForQuiz = {
 
 // Display the Quiz Center page
 export default function QuizPage() {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
   // Get learning materials from Redux
@@ -70,6 +73,21 @@ export default function QuizPage() {
 
   // Check whether the quiz has been finished
   const [isQuizFinished, setIsQuizFinished] = useState(false);
+
+
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);   //quizResult stores the result received from backend.
+
+  // Store all attempts for the selected quiz
+  const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
+
+  // Check whether the quiz history page should be displayed
+  const [showQuizHistory, setShowQuizHistory] = useState(false);
+
+  // Check whether the user is viewing a previous quiz result
+  const [isViewingHistoryResult, setIsViewingHistoryResult] = useState(false);
+
+  // Check whether quiz history is loading
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   // The generation modal
   const [showGenerationForm, setShowGenerationForm] = useState(false);
@@ -190,6 +208,25 @@ export default function QuizPage() {
   // Get the question currently displayed
   const currentQuestion = selectedQuiz?.questions[currentQuestionIndex];
 
+  // Calculate the percentage for a quiz attempt
+  const getPercentage = (attempt: QuizResult) => {
+    return attempt.totalQuestions > 0
+      ? Math.round((attempt.score / attempt.totalQuestions) * 100)
+      : 0;
+  };
+
+  // Find the attempt with the highest percentage
+  const bestAttempt = quizHistory.reduce<QuizResult | null>(
+    (best, attempt) => {
+      if (!best || getPercentage(attempt) > getPercentage(best)) {
+        return attempt;
+      }
+
+      return best;
+    },
+    null
+  );
+
   // Store the selected answer for the current question
   const handleSelectAnswer = (answer: string) => {
     setSelectedAnswers((current) => {
@@ -206,6 +243,47 @@ export default function QuizPage() {
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
     setIsQuizFinished(false);
+    setQuizResult(null);
+    setQuizHistory([]);
+    setShowQuizHistory(false);
+    setIsViewingHistoryResult(false);
+  };
+
+  // Load all attempts for the selected quiz
+  const handleViewHistory = async (quizId: string) => {
+    setErrorMessage("");
+    setQuizHistory([]);
+    setSelectedQuizId(quizId);
+    setIsQuizFinished(false);
+    setQuizResult(null);
+    setShowQuizHistory(true);
+    setIsViewingHistoryResult(false);
+    setIsHistoryLoading(true);
+
+    try {
+      const history = await getQuizHistory(quizId);
+      setQuizHistory(history);
+    } catch {
+      setErrorMessage("Failed to load quiz history. Please try again.");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  // Open the result of a previous attempt
+  const handleViewAttemptResult = (attempt: QuizResult) => {
+    setQuizResult(attempt);
+    setIsQuizFinished(true);
+    setShowQuizHistory(false);
+    setIsViewingHistoryResult(true);
+  };
+
+  // Return to the quiz history list
+  const handleBackToHistory = () => {
+    setQuizResult(null);
+    setIsQuizFinished(false);
+    setShowQuizHistory(true);
+    setIsViewingHistoryResult(false);
   };
 
   // Move to the previous question
@@ -226,8 +304,18 @@ export default function QuizPage() {
   };
 
   // Finish the quiz and show the result
-  const handleFinishQuiz = () => {
-    setIsQuizFinished(true);
+  const handleFinishQuiz = async() => {
+    if(!selectedQuiz) return
+
+    try{
+      const response = await showQuizResult(selectedQuiz._id,selectedAnswers)
+
+      setQuizResult(response.data)
+      setIsQuizFinished(true);
+
+    }catch(error){
+       setErrorMessage("Failed to submit Quiz result")
+    }
   };
 
   // Return to the saved quiz list
@@ -236,13 +324,23 @@ export default function QuizPage() {
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
     setIsQuizFinished(false);
+    setQuizResult(null);
+    setQuizHistory([]);
+    setShowQuizHistory(false);
+    setIsViewingHistoryResult(false);
   };
 
-  // Calculate the number of correct answers
-  const score =
-    selectedQuiz?.questions.reduce((total, question, index) => {
-      return total + (selectedAnswers[index] === question.correctAnswer ? 1 : 0);
-    }, 0) || 0;
+  // Retry the same quiz with a fresh set of answers
+  const handleRetryQuiz = () => {
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers([]);
+    setIsQuizFinished(false);
+    setQuizResult(null);
+    setErrorMessage("");
+    setIsViewingHistoryResult(false);
+    setShowQuizHistory(false);
+  };
+
 
   // Open the modal and clear previous messages.
   const openGenerationForm = () => {
@@ -561,14 +659,15 @@ export default function QuizPage() {
                                 </div>
 
                                 {/* Show the available quiz actions */}
-                                <div className="mt-5 flex flex-wrap gap-2">
+                                <div className="mt-5 flex justify-end gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => navigate(`/quiz/${quizId}`)}
+                                    onClick={() => handleViewHistory(quizId)}
                                     disabled={!quizId}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-medium transition hover:bg-[#FDF3EC] disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC] disabled:opacity-50"
                                   >
-                                    View Questions
+                                    <History className="h-4 w-4" />
+                                    History
                                   </button>
 
                                   <button
@@ -592,7 +691,114 @@ export default function QuizPage() {
               </>
             ) : (
               <div className="rounded-2xl border border-[#E9DED4] bg-white p-5 shadow-sm sm:p-7">
-                {!isQuizFinished ? (
+
+                {/* Display the history of the selected quiz */}
+                {showQuizHistory ? (
+                  <>
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-xl font-bold">
+                          Quiz History
+                        </h2>
+
+                        <p className="mt-1 text-sm text-[#6B7568]">
+                          {selectedQuiz.title}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleExitQuiz}
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-medium transition hover:bg-[#FDF3EC]"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Quizzes
+                      </button>
+                    </div>
+
+                    {isHistoryLoading ? (
+                      <div className="rounded-xl border border-[#E9DED4] bg-[#FDF3EC] p-6 text-center text-sm text-[#6B7568]">
+                        Loading quiz history...
+                      </div>
+                    ) : quizHistory.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-[#D8C8BA] p-8 text-center">
+                        <History className="mx-auto mb-3 h-10 w-10 text-[#A3B19B]" />
+
+                        <h3 className="font-semibold">
+                          No attempts yet
+                        </h3>
+
+                        <p className="mt-2 text-sm text-[#6B7568]">
+                          Start this quiz to create your first attempt.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Display the best quiz attempt */}
+                        {bestAttempt && (
+                          <div className="mb-6 rounded-xl bg-[#FDF3EC] p-5">
+                            <p className="text-sm font-semibold text-[#6B7568]">
+                              Best Score
+                            </p>
+
+                            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+                              <p className="text-3xl font-bold text-[#F27A58]">
+                                {bestAttempt.score} / {bestAttempt.totalQuestions}
+                              </p>
+
+                              <p className="text-lg font-semibold text-[#2D4030]">
+                                {getPercentage(bestAttempt)}%
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Display all attempts */}
+                        <div className="space-y-4">
+                          {quizHistory.map((attempt, index) => (
+                            <article
+                              key={attempt._id}
+                              className="rounded-xl border border-[#E9DED4] p-4 sm:p-5"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="font-semibold">
+                                    Attempt {quizHistory.length - index}
+                                  </h3>
+
+                                  <p className="mt-1 text-sm text-[#6B7568]">
+                                    {new Date(attempt.completedAt).toLocaleString()}
+                                  </p>
+                                </div>
+
+                                <div className="text-right">
+                                  <p className="font-bold text-[#2D4030]">
+                                    {attempt.score} / {attempt.totalQuestions}
+                                  </p>
+
+                                  <p className="mt-1 text-sm text-[#6B7568]">
+                                    {getPercentage(attempt)}% correct
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewAttemptResult(attempt)}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-[#2D4030] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3c5540]"
+                                >
+                                  View Results
+                                  <ArrowRight className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : !isQuizFinished ? (
                   <>
                     {/* Quiz heading */}
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -725,38 +931,135 @@ export default function QuizPage() {
                         />
                       </div>
 
-                      <h2 className="text-2xl font-bold">Quiz Completed!</h2>
+                      <h2 className="text-2xl font-bold">
+                        {isViewingHistoryResult
+                          ? "Previous Quiz Result"
+                          : "Quiz Completed!"}
+                      </h2>
 
                       <p className="mt-2 text-sm text-[#6B7568]">
-                        You have completed {selectedQuiz.title}
+                        {isViewingHistoryResult
+                          ? `Reviewing a previous attempt of ${selectedQuiz.title}`
+                          : `You have completed ${selectedQuiz.title}`}
                       </p>
 
                       <div className="mx-auto mt-7 max-w-xs rounded-xl bg-[#FDF3EC] p-6">
                         <p className="text-sm text-[#6B7568]">
-                          Your Score
+                          {isViewingHistoryResult ? "Attempt Score" : "Your Score"}
                         </p>
 
                         <p className="mt-2 text-4xl font-bold text-[#F27A58]">
-                          {score} / {selectedQuiz.questions.length}
+                          {quizResult?.score ?? 0} / {quizResult?.totalQuestions ?? 0}
                         </p>
 
                         <p className="mt-2 text-sm text-[#6B7568]">
-                          {selectedQuiz.questions.length > 0
-                            ? Math.round(
-                                (score / selectedQuiz.questions.length) * 100
-                              )
+                          {quizResult && quizResult.totalQuestions > 0
+                            ? getPercentage(quizResult)
                             : 0}
-                          % correct answers
+                            % correct answers
                         </p>
                       </div>
+                    </div>
+
+                    {/* Review the answers after completing the quiz */}
+                    <div className="mt-6">
+                      <h3 className="mb-4 text-xl font-bold">
+                        Review Your Answers
+                      </h3>
+
+                      <div className="space-y-5">
+                        {quizResult?.answers.map((answer, index) => (
+                          <div
+                            key={`${index}-${answer.question}`}
+                            className="rounded-xl border border-[#E9DED4] p-4 sm:p-5"
+                          >
+                            <h4 className="mb-4 font-semibold leading-6">
+                              {index + 1}. {answer.question}
+                            </h4>
+
+                            {/* Show the answer selected by the user */}
+                            <div
+                              className={`rounded-lg border p-3 ${
+                                answer.isCorrect
+                                  ? "border-green-200 bg-green-50"
+                                  : "border-red-200 bg-red-50"
+                              }`}
+                            >
+                              <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7568]">
+                                Your answer
+                              </p>
+
+                              <p
+                                className={`mt-1 text-sm font-semibold ${
+                                  answer.isCorrect
+                                    ? "text-green-700"
+                                    : "text-red-700"
+                                }`}
+                              >
+                                {answer.selectedAnswer}
+                              </p>
+                            </div>
+
+                            {/* Show the correct answer when the selected answer is wrong */}
+                            {!answer.isCorrect && (
+                              <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                                  Correct answer
+                                </p>
+
+                                <p className="mt-1 text-sm font-semibold text-green-700">
+                                  {answer.correctAnswer}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Show the explanation separately below the answers */}
+                          {answer.explanation && (
+                            <div className="mt-4 rounded-lg bg-[#FDF3EC] p-3">
+                              <p className="text-sm font-semibold text-[#2D4030]">
+                                Explanation
+                              </p>
+
+                              <p className="mt-1 text-sm leading-6 text-[#6B7568]">
+                                {answer.explanation}
+                              </p>
+                            </div>
+                          )}                          
+                        </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Retry and exit buttons */}
+                    <div className="mt-7 flex items-center justify-between gap-3">
 
                       <button
                         type="button"
-                        onClick={handleExitQuiz}
-                        className="mt-7 rounded-lg bg-[#2D4030] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3c5540]"
+                        onClick={
+                          isViewingHistoryResult
+                            ? handleBackToHistory
+                            : handleExitQuiz
+                        }
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#2D4030] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3c5540]"
                       >
-                        Back to Quiz Sets
+                        <ArrowLeft className="h-4 w-4" />
+                        {isViewingHistoryResult
+                          ? "Back to History"
+                          : "Back to Quiz"}
                       </button>
+
+                      {!isViewingHistoryResult && (
+                        <button
+                          type="button"
+                          onClick={handleRetryQuiz}
+                          aria-label="Retry quiz"
+                          title="Retry quiz"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#D8C8BA] text-[#2D4030] transition hover:bg-[#FDF3EC]"
+                        >
+                          <RotateCcw className="h-5 w-5" />
+                        </button>
+                      )}
+
                     </div>
                   </>
                 )}

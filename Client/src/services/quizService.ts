@@ -1,7 +1,7 @@
 
 import type { Quiz } from "../types/quiz.types";
 import { api } from "./api";
-
+import type { QuizResult } from "../types/quizResult.types"
 
 
 
@@ -57,4 +57,34 @@ export const createQuiz = async (
 // Delete a saved quiz
 export const deleteQuiz = async (id: string): Promise<void> => {
   await api.delete(`/api/quiz/delete/${id}`);
+};
+
+
+
+
+
+                        // QUIZ RESULTS
+
+// Display Quiz results                        
+export const showQuizResult = async (
+    quizId:string,
+    selectedAnswers:string[]
+)=>{
+    const response = await api.post('/api/quizResult/submitResult',{
+        quizId,
+        selectedAnswers
+    })
+
+     return response.data
+}
+
+
+
+// Fetch all attempts for a particular quiz
+export const getQuizHistory = async (
+  quizId: string
+): Promise<QuizResult[]> => {
+  const response = await api.get(`/api/quizResult/history/${quizId}`);
+
+  return response.data.data;
 };
