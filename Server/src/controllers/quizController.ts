@@ -317,7 +317,7 @@ export const getQuizById = async (req: Request, res: Response) => {
     }
 
     const userId = req.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Find the quiz that belongs to this user
     const quiz = await quizModel.findOne({
@@ -354,7 +354,9 @@ export const updateQuiz = async (req: Request, res: Response) => {
     }
 
     const userId = req.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
+
+    
     const { topic, title, sources, questions } = req.body;
 
     // Store only the fields provided by the user
@@ -408,7 +410,7 @@ export const deleteQuiz = async (req: Request, res: Response) => {
     }
 
     const userId = req.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Delete only the quiz that belongs to this user
     const quiz = await quizModel.findOneAndDelete({

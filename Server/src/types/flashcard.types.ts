@@ -8,7 +8,7 @@ export type FlashCardDifficulty = "easy" | "medium" | "hard"
 export interface Flashcard{
     _id:string;
     userId:string;
-    title?:string;
+    title:string;
     topic:string;
     tags?:string[];
     sources:FlashcardSource[];
@@ -29,7 +29,7 @@ export interface Flashcard{
 
 // Data required to create a flashcard
 export interface FlashcardBody{
-    title?:string;
+    title:string;
     topic:string;
     tags?:string[];
     sources:FlashcardSource[];

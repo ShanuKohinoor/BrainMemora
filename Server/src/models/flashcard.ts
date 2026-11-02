@@ -28,7 +28,8 @@ const flashcardSchema = new mongoose.Schema<Flashcard>({
         required:true
     },
     title:{
-        type:String
+        type:String,
+        required:true
     },
     // Stores the learning materials linked to this flashcard.
     sources:{

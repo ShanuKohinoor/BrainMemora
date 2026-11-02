@@ -10,6 +10,7 @@ interface TopicCardProps {
   onOpenMaterials: () => void;
   onGenerateFlashcards:()=>void;
   onGenerateQuiz:()=>void;
+  onLearningSessions:()=>void;
   onEdit: (newTitle: string) => Promise<boolean>;
   onDelete: () => Promise<void> | void;
   isEditing: boolean;
@@ -24,6 +25,7 @@ export function TopicCard({
   onOpenMaterials,
   onGenerateFlashcards,
   onGenerateQuiz,
+  onLearningSessions,
   onEdit,
   onDelete,
   isEditing,
@@ -155,7 +157,6 @@ export function TopicCard({
               <Check size={16} />
               {isEditing ? "Saving..." : "Save"}
             </button>
-
             <button
               type="button"
               onClick={handleCancelEdit}
@@ -202,32 +203,40 @@ export function TopicCard({
       </div>
 
       {/* Topic action buttons */}
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onOpenMaterials}
           disabled={isEditing || isDeleting || isEditingTitle}
-          className="rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-medium text-white hover:bg-[#405943] disabled:opacity-50"
+          className="col-span-2 rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-medium text-white hover:bg-[#405943] disabled:opacity-50"
         >
           Open Materials
         </button>
-       <div className="flex w-full gap-2">
 
         <button
           type="button"
           onClick={onGenerateFlashcards}
           disabled={isEditing || isDeleting || isEditingTitle}
-          className="min-w-0 flex-1 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
+          className="flex-1 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
           Generate Flashcards
         </button>
         <button
           type="button"
           onClick={onGenerateQuiz}
           disabled={isEditing || isDeleting || isEditingTitle}
-          className="min-w-0 flex-1 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
+          className="flex-1 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
           Take Quiz
         </button>
-      </div>
+        <button
+            type="button"
+            onClick={onLearningSessions}
+            disabled={isEditing || isDeleting || isEditingTitle}
+            className="col-span-2 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
+            
+              Learning Sessions
+        </button>
+
+
     </div>
 
       {/* Delete confirmation appears inside the topic card */}

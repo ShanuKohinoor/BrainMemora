@@ -1,17 +1,23 @@
 import {api} from "./api"
 
-import type { LearningSession } from "../types/learningSession.types"
 
-
-
-
+// Create learning material
 export const createLearningSessions = async(
     topic:string,
-    sessions:Partial<LearningSession>[]            // Partial:-means all properties in the LearningSession interface become optional
 )=>{
      const response = await api.post('/api/session/learningSession',{
-        topic,
-        sessions
+        topic
      })
      return response.data
+}
+
+
+// Get learning material
+export const getLearningSessions = async(
+    topic:string
+)=>{
+    const response = await api.get('/api/session/learningSession',{
+        params:{topic}
+    })
+    return response.data.data;
 }

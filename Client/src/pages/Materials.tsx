@@ -4,7 +4,7 @@ import { useEffect,useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { useNavigate } from "react-router";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
-import { ChevronDown,GraduationCap } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { TopicCard } from "../components/TopicCard";
 import {
@@ -240,14 +240,7 @@ export default function Materials(){
                 My Learning Materials
                 </h1>
             </div>
-                <button
-                    type="button"
-                    onClick={() => navigate("/learningSession")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
-                >
-                    <GraduationCap size={20} />
-                    Learning Sessions
-                </button>
+                
 
             </div>
         {loading && <p>Loading....</p>}
@@ -294,6 +287,10 @@ export default function Materials(){
                     onGenerateQuiz={()=>
                      navigate("/quizzes")
                     }    
+                    onLearningSessions={() =>
+                     navigate("/learningSession", { state: { topic } })    // state:- Place to carry information to the next page
+                    }
+
                    onEdit={(newTitle) => handleEditTopic(topic, newTitle)}
                     onDelete={() => handleDeleteTopic(topic)}
                     isEditing={editingTopic === topic}
