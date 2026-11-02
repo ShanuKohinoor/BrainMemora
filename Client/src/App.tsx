@@ -10,6 +10,7 @@ const Materials = lazy (()=>import("./pages/Materials"))
 const Flashcards = lazy (()=>import("./pages/Flashcards"))
 const Quizzes = lazy(()=>import("./pages/Quizzes"))
 const Notes = lazy(()=>import("./pages/Notes"))
+const LearningSessions = lazy(()=>import("./pages/LearningSessions"))
 
 const AddMaterial = lazy(()=>import("./pages/AddMaterial"))
 
@@ -35,6 +36,7 @@ export default function App(){
               <Route path="/profile" element={<Profile/>}/>
               <Route path="/flashcards" element={<Flashcards/>}/>
               <Route path="/quizzes" element={<Quizzes/>}/>
+              <Route path="/learningSession" element={<LearningSessions/>}/>
 
         {/* </Route> */}
       </Routes>

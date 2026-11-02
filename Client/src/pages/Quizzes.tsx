@@ -533,14 +533,13 @@ export default function QuizPage() {
               materials
             </p>
           </div>
-                          <button
-                    type="button"
-                    onClick={() => navigate("/learning-sessions")}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
-                >
-                    <GraduationCap size={20} />
-                    Learning Sessions
-                </button>
+          <button
+             type="button"
+             onClick={() => navigate("/learningSession")}
+             className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]">
+              <GraduationCap size={20} />
+                  Learning Sessions
+          </button>
 
         </div>
 

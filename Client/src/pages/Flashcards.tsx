@@ -519,7 +519,7 @@ export default function Flashcards() {
 
         <button
                 type="button"
-                onClick={() => navigate("/learning-sessions")}
+                onClick={() => navigate("/learningSession")}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
             >
             <GraduationCap size={20} />
