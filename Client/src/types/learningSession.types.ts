@@ -6,6 +6,7 @@ export interface LearningSession{
     description?:string;
     order:number;
     quizIds:string[];
+    passedQuizIds: string[];
     flashcardIds:string[];
     quizCompleted: boolean,
     flashcardCompleted: boolean,

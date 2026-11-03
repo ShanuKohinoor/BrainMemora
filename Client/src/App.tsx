@@ -39,7 +39,7 @@ export default function App(){
               <Route path="/flashcards" element={<Flashcards/>}/>
               <Route path="/quizzes" element={<Quizzes/>}/>
               <Route path="/learningSession" element={<LearningSessions/>}/>
-              <Route path="/LearningSessionDetails" element={<LearningSessionDetails/>}/>
+              <Route path="/learningSessionDetails/:sessionId" element={<LearningSessionDetails/>}/>
 
               
 

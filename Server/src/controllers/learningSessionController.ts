@@ -1,8 +1,7 @@
 
 import type { Request, Response } from "express";
 import { UnauthorizedError } from "../utils/error.js";
-
-import { LearningSessionModel } from "../models/learnngSession.js";
+import { LearningSessionModel } from "../models/learningSession.js";
 import { quizModel } from "../models/quiz.js";
 import { flashcardModel } from "../models/flashcard.js";
 
@@ -96,19 +95,46 @@ export const createLearningSessions = async (
         group.title.toLowerCase()
     );
 
-    if (existingSession) {
-      // Add new IDs without creating duplicates
-      await LearningSessionModel.updateOne(
-        { _id: existingSession._id, userId },
-        {
-          $addToSet: {
-            quizIds: { $each: group.quizIds },
-            flashcardIds: { $each: group.flashcardIds }
-          }
-        }
-      );
+if (existingSession) {
+  // Find newly added quiz and flashcard IDs
+  const newQuizIds = group.quizIds.filter(
+    (id) => !existingSession.quizIds.includes(id)
+  );
 
-    } else {
+  const newFlashcardIds = group.flashcardIds.filter(
+    (id) => !existingSession.flashcardIds.includes(id)
+  );
+
+  // Add IDs without creating duplicates
+  await LearningSessionModel.updateOne(
+    { _id: existingSession._id, userId },
+    {
+      $addToSet: {
+        quizIds: { $each: group.quizIds },
+        flashcardIds: { $each: group.flashcardIds }
+      },
+      $set: {
+        quizCompleted:
+          newQuizIds.length > 0
+            ? false
+            : existingSession.quizCompleted,
+
+        flashcardCompleted:
+          newFlashcardIds.length > 0
+            ? false
+            : existingSession.flashcardCompleted,
+
+        ...(newQuizIds.length > 0 || newFlashcardIds.length > 0
+          ? { isCompleted: false }
+          : {})
+      },
+      ...(newQuizIds.length > 0 || newFlashcardIds.length > 0
+        ? { $unset: { completedAt: 1 } }
+        : {})
+    }
+  );
+}
+     else {
       // Create a new session for a new title
       nextOrder++;
 
@@ -119,8 +145,8 @@ export const createLearningSessions = async (
         order: nextOrder,
         quizIds: group.quizIds,
         flashcardIds: group.flashcardIds,
-        quizCompleted: false,
-        flashcardCompleted: false,
+        quizCompleted: group.quizIds.length === 0,
+        flashcardCompleted: group.flashcardIds.length === 0,
         isUnlocked: nextOrder === 1,
         isCompleted: false
       });
@@ -214,5 +240,80 @@ const sessionId = req.params.id as string;
       quizzes,
       flashcards
     }
+  });
+};
+
+
+
+
+// Mark flashcards as completed in a learning session
+export const completeFlashcards = async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.userId) {
+    throw new UnauthorizedError("Please login first");
+  }
+
+  const userId = req.userId;
+  const id = req.params.id as string;
+
+  // Find the session belonging to this user
+  const session = await LearningSessionModel.findOne({
+    _id: id,
+    userId
+  });
+
+  if (!session) {
+    return res.status(404).json({
+      success: false,
+      message: "Learning session not found"
+    });
+  }
+
+  if (session.flashcardIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "No flashcards available in this session"
+    });
+  }
+
+  // Mark flashcards as completed
+  const updatedSession = await LearningSessionModel.findOneAndUpdate(
+    { _id:id, userId },
+    {
+      $set: {
+        flashcardCompleted: true,
+
+        // Complete the session only if the quizzes are also completed
+        ...(session.quizCompleted && {
+          isCompleted: true,
+          completedAt: session.completedAt || new Date()
+        })
+      }
+    },
+    { new: true }
+  );
+
+  // Unlock the next session if both activities are completed
+  if (updatedSession?.isCompleted) {
+    const nextSession = await LearningSessionModel.findOne({
+      userId,
+      topic: updatedSession.topic,
+      order: { $gt: updatedSession.order }
+    }).sort({ order: 1 });
+
+    if (nextSession) {
+      await LearningSessionModel.updateOne(
+        { _id: nextSession._id, userId },
+        { $set: { isUnlocked: true } }
+      );
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Flashcards completed successfully",
+    data: updatedSession
   });
 };

@@ -1,17 +1,17 @@
+
 import { useEffect, useState } from "react";
 import {
   BookOpen,
   ArrowRight,
   X,
   Layers,
-  ChevronLeft,
-  ChevronRight,
-  RotateCw,
   Sparkles,
   ChevronDown,
   ChevronUp,
-  GraduationCap
+  GraduationCap,
 } from "lucide-react";
+
+import FlashcardAssessment from "../components/FlashcardAssessment";
 import { useNavigate } from "react-router";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
@@ -47,8 +47,8 @@ const materialTypes: { value: MaterialType; label: string }[] = [
 
 export default function Flashcards() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
-  const navigate = useNavigate()
   const notes = useAppSelector((state) => state.notes.notes);
   const materials = useAppSelector(
     (state) => state.learningMaterials.materials
@@ -57,27 +57,22 @@ export default function Flashcards() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [showGenerationForm, setShowGenerationForm] = useState(false);
 
-  // Topics must be selected before generating flashcards.
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-
   const [selectedNoteId, setSelectedNoteId] = useState("");
 
-  // Empty arrays mean no titles or types have been selected.
   const [selectedMaterialTitles, setSelectedMaterialTitles] =
     useState<string[]>([]);
   const [selectedMaterialTypes, setSelectedMaterialTypes] =
     useState<MaterialType[]>([]);
 
-  // Control the checklist dropdowns.
   const [showTopicOptions, setShowTopicOptions] = useState(false);
   const [showTitleOptions, setShowTitleOptions] = useState(false);
   const [showTypeOptions, setShowTypeOptions] = useState(false);
 
   const [numberOfCards, setNumberOfCards] = useState(10);
 
-  const [viewSetKey, setViewSetKey] = useState<string | null>(null);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
+  // The selected topic determines which assessment is open.
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -95,7 +90,6 @@ export default function Flashcards() {
         setErrorMessage("");
 
         const savedCards = await getAllFlashcards();
-
         setFlashcards((savedCards ?? []) as Flashcard[]);
       } catch {
         setErrorMessage("Unable to load flashcards. Please try again.");
@@ -130,19 +124,18 @@ export default function Flashcards() {
     new Set([...noteTopics, ...materialTopics])
   ).sort();
 
-  // Keep only topics that still exist.
   const validSelectedTopics = selectedTopics.filter((topic) =>
     allTopics.includes(topic)
   );
 
-  // Filter materials by the selected topics.
+  // Filter materials by selected topics.
   const materialsForTopic = materials.filter(
     (material) =>
       material._id &&
       validSelectedTopics.includes(material.topic?.trim() ?? "")
   );
 
-  // Get the titles available for the selected topics.
+  // Get titles available for selected topics.
   const materialTitles = Array.from(
     new Set(
       materialsForTopic
@@ -151,13 +144,11 @@ export default function Flashcards() {
     )
   ).sort();
 
-  // Keep only titles that are still available.
   const validSelectedTitles = selectedMaterialTitles.filter((title) =>
     materialTitles.includes(title)
   );
 
-  // Use selected titles to determine which material types are available.
-  // If no title is selected yet, show types available across the topic.
+  // Determine which material types are available.
   const materialsForTypeOptions =
     validSelectedTitles.length > 0
       ? materialsForTopic.filter((material) =>
@@ -171,26 +162,24 @@ export default function Flashcards() {
     )
   );
 
-  // Keep only selected types that remain available.
   const validSelectedMaterialTypes = selectedMaterialTypes.filter((type) =>
     availableMaterialTypes.some(
       (availableType) => availableType.value === type
     )
   );
 
-  // Only use materials whose title AND type were explicitly selected.
+  // Use materials whose title and type were selected.
   const visibleMaterials = materialsForTopic.filter(
     (material) =>
       validSelectedTitles.includes(material.title.trim()) &&
       validSelectedMaterialTypes.includes(material.type)
   );
 
-  // Collect IDs of materials matching every selected filter.
   const matchingMaterialIds = visibleMaterials
     .map((material) => material._id)
     .filter((id): id is string => Boolean(id));
 
-  // Group flashcards by topic so each topic appears once.
+  // Group flashcards by topic.
   const flashcardSets: FlashcardSet[] = [];
 
   for (const card of flashcards) {
@@ -215,15 +204,10 @@ export default function Flashcards() {
 
   flashcardSets.sort((a, b) => a.topic.localeCompare(b.topic));
 
-  // Find the currently open topic.
+  // Find the currently selected topic.
   const activeSet =
-    flashcardSets.find((set) => set.key === viewSetKey) ?? null;
+    flashcardSets.find((set) => set.key === selectedTopic) ?? null;
 
-  // Show every flashcard belonging to the selected topic.
-  const topicFlashcards = activeSet?.cards ?? [];
-  const currentCard = topicFlashcards[currentCardIndex];
-
-  // Close the generation form.
   function handleCancelGeneration() {
     if (isGenerating) return;
 
@@ -234,7 +218,6 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
-  // Select or deselect a topic.
   function handleTopicToggle(topic: string) {
     setSelectedTopics((previous) =>
       previous.includes(topic)
@@ -242,7 +225,6 @@ export default function Flashcards() {
         : [...previous, topic]
     );
 
-    // Reset title and type choices when topics change.
     setSelectedMaterialTitles([]);
     setSelectedMaterialTypes([]);
     setSelectedNoteId("");
@@ -252,7 +234,6 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
-  // Select or deselect a title.
   function handleTitleToggle(title: string) {
     setSelectedMaterialTitles((previous) =>
       previous.includes(title)
@@ -260,14 +241,12 @@ export default function Flashcards() {
         : [...previous, title]
     );
 
-    // Changing titles can change the available material types.
     setSelectedMaterialTypes([]);
     setSelectedNoteId("");
     setErrorMessage("");
     setSuccessMessage("");
   }
 
-  // Select or deselect a material type.
   function handleMaterialTypeToggle(type: MaterialType) {
     setSelectedMaterialTypes((previous) =>
       previous.includes(type)
@@ -279,7 +258,6 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Select or deselect all topics.
   function handleSelectAllTopics() {
     const allTopicsSelected =
       allTopics.length > 0 &&
@@ -287,7 +265,6 @@ export default function Flashcards() {
 
     setSelectedTopics(allTopicsSelected ? [] : [...allTopics]);
 
-    // Clear dependent selections after changing topics.
     setSelectedMaterialTitles([]);
     setSelectedMaterialTypes([]);
     setSelectedNoteId("");
@@ -297,7 +274,6 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
-  // Select all available titles 
   function handleSelectAllTitles() {
     const allTitlesSelected =
       materialTitles.length > 0 &&
@@ -313,11 +289,11 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Select all available material types 
   function handleSelectAllTypes() {
     const allTypesSelected =
       availableMaterialTypes.length > 0 &&
-      validSelectedMaterialTypes.length === availableMaterialTypes.length;
+      validSelectedMaterialTypes.length ===
+        availableMaterialTypes.length;
 
     setSelectedMaterialTypes(
       allTypesSelected
@@ -329,19 +305,16 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Open a topic containing newly generated card
+  // Open the topic containing the generated flashcards.
   function openGeneratedSet(cards: Flashcard[]) {
     const firstCard = cards[0];
 
     if (!firstCard) return;
 
     setShowGenerationForm(false);
-    setViewSetKey(firstCard.topic);
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
+    setSelectedTopic(firstCard.topic);
   }
 
-  // Generate cards from a note or selected learning materials
   async function handleGenerateFlashcards() {
     setErrorMessage("");
     setSuccessMessage("");
@@ -351,7 +324,6 @@ export default function Flashcards() {
       return;
     }
 
-    // Require title and type 
     if (validSelectedTitles.length === 0) {
       setErrorMessage("Please select at least one title.");
       return;
@@ -375,7 +347,6 @@ export default function Flashcards() {
       let generatedCards: Flashcard[] = [];
 
       if (selectedNoteId) {
-
         generatedCards = await generateFlashcardFromNote(
           selectedNoteId,
           numberOfCards,
@@ -396,7 +367,6 @@ export default function Flashcards() {
         return;
       }
 
-      // Use the returned topic(fall back) to the selected topic
       const fallbackTopic =
         validSelectedTopics.length === 1
           ? validSelectedTopics[0]
@@ -409,7 +379,6 @@ export default function Flashcards() {
         })
       );
 
-      // Add the new cards without removing existing cards
       setFlashcards((previousCards) => [
         ...cardsToAdd,
         ...previousCards,
@@ -427,35 +396,12 @@ export default function Flashcards() {
     }
   }
 
-  // Flip the current flashcard
-  function handleFlip() {
-    setIsFlipped((previousValue) => !previousValue);
-  }
-
-  // Move to the next card
-  function handleNextCard() {
-    if (currentCardIndex < topicFlashcards.length - 1) {
-      setCurrentCardIndex((previousIndex) => previousIndex + 1);
-      setIsFlipped(false);
-    }
-  }
-
-  // Move to the previous card
-  function handlePreviousCard() {
-    if (currentCardIndex > 0) {
-      setCurrentCardIndex((previousIndex) => previousIndex - 1);
-      setIsFlipped(false);
-    }
-  }
-
-  // Close the modal
+  // Close the assessment.
   function handleCloseStudy() {
-    setViewSetKey(null);
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
+    setSelectedTopic(null);
   }
 
-  // Delete the currently displayed flashcard
+  // Delete a flashcard from the selected topic.
   async function handleDeleteCard(card: Flashcard) {
     if (!card._id) {
       setErrorMessage("This flashcard has no valid ID.");
@@ -467,27 +413,9 @@ export default function Flashcards() {
 
       await deleteFlashcard(card._id);
 
-      const remainingCards = flashcards.filter(
-        (item) => item._id !== card._id
+      setFlashcards((previousCards) =>
+        previousCards.filter((item) => item._id !== card._id)
       );
-
-      setFlashcards(remainingCards);
-
-      const remainingTopicCards = remainingCards.filter(
-        (item) => item.topic === activeSet?.topic
-      );
-
-      if (remainingTopicCards.length === 0) {
-        handleCloseStudy();
-        return;
-      }
-
-      // Keep the index valid after deleting a card
-      setCurrentCardIndex((previousIndex) =>
-        Math.min(previousIndex, remainingTopicCards.length - 1)
-      );
-
-      setIsFlipped(false);
     } catch {
       setErrorMessage("Unable to delete the flashcard. Please try again.");
     }
@@ -499,36 +427,33 @@ export default function Flashcards() {
       backTo="/allLearningMaterials"
     >
       <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6 lg:px-8">
-        {/* Main page heading. */}
+        {/* Main page heading */}
         <header className="mb-8">
-         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
+                LEARN * REVISE * REMEMBER
+              </p>
 
-          <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
-            LEARN * REVISE * REMEMBER
-          </p>
+              <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+                Turn Learning into Lasting Memory
+              </h1>
 
-          <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
-            Turn Learning into Lasting Memory
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74675F] sm:text-base">
-            Create flashcards from your learning materials and practise
-            recalling what you know.
-          </p>
-        </div>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74675F] sm:text-base">
+                Create flashcards from your learning materials and practise
+                recalling what you know.
+              </p>
+            </div>
 
-        <button
-                type="button"
-                onClick={() => navigate("/learningSession")}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
+            <button
+              type="button"
+              onClick={() => navigate("/learningSession")}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
             >
-            <GraduationCap size={20} />
-                  Learning Sessions
-         </button>
-
-        </div>
-
-          
+              <GraduationCap size={20} />
+              Learning Sessions
+            </button>
+          </div>
         </header>
 
         {/* Error feedback */}
@@ -551,13 +476,14 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Main page: generation card and saved topics */}
+        {/* Generation card and saved topics */}
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           {/* Generation card */}
           <section className="rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-5 flex h-24 w-28 items-center justify-center">
               <div className="relative h-24 w-24">
                 <div className="absolute left-8 top-1 h-[76px] w-[54px] rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#B5CDA8] shadow-sm" />
+
                 <div className="absolute left-3 top-2 h-[76px] w-[54px] -rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#D9A399] shadow-sm" />
 
                 <div className="absolute left-5 top-3 flex h-[76px] w-[54px] flex-col items-center justify-center rounded-xl border border-[#2D4030]/10 bg-[#A7C1D0] shadow-md">
@@ -598,7 +524,7 @@ export default function Flashcards() {
             </button>
           </section>
 
-          {/* Each topic appears only once */}
+          {/* Saved flashcard topics */}
           <section className="min-w-0">
             <h2 className="mb-1 text-lg font-semibold sm:text-xl">
               Your flashcards
@@ -613,26 +539,26 @@ export default function Flashcards() {
                 Loading your flashcards...
               </p>
             ) : flashcardSets.length === 0 ? (
+              <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
+                  <BookOpen size={23} />
+                </div>
 
-          <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
-                <BookOpen size={23} />
+                <h3 className="font-semibold">No flashcards yet</h3>
+
+                <p className="mt-2 text-sm leading-6 text-[#74675F]">
+                  Generate your first flashcards to begin revising.
+                </p>
               </div>
-
-              <h3 className="font-semibold">No flashcards yet</h3>
-
-              <p className="mt-2 text-sm leading-6 text-[#74675F]">
-                Generate your first flashcards to begin revising.
-              </p>
-            </div>
-              ) : (
+            ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3">
                 {flashcardSets.map((set, index) => {
                   const topicNote = notes.find(
                     (note) => note.topic === set.topic
                   );
 
-                  const topicColor = cardColors[index % cardColors.length];
+                  const topicColor =
+                    cardColors[index % cardColors.length];
 
                   return (
                     <article
@@ -663,9 +589,7 @@ export default function Flashcards() {
                         <button
                           type="button"
                           onClick={() => {
-                            setViewSetKey(set.key);
-                            setCurrentCardIndex(0);
-                            setIsFlipped(false);
+                            setSelectedTopic(set.key);
                             setErrorMessage("");
                             setSuccessMessage("");
                           }}
@@ -726,7 +650,7 @@ export default function Flashcards() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Topic checklist. */}
+                {/* Topic checklist */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
                     1. Choose Topics
@@ -797,7 +721,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Title checklist:- Disabled until a topic is selected */}
+                {/* Title checklist */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
                     2. Choose Titles
@@ -820,7 +744,9 @@ export default function Flashcards() {
                         onChange={() => handleTitleToggle(materialTitles[0])}
                       />
 
-                      <span className="break-words">{materialTitles[0]}</span>
+                      <span className="break-words">
+                        {materialTitles[0]}
+                      </span>
                     </label>
                   ) : (
                     <>
@@ -854,7 +780,8 @@ export default function Flashcards() {
                               type="checkbox"
                               disabled={isGenerating}
                               checked={
-                                validSelectedTitles.length === materialTitles.length
+                                validSelectedTitles.length ===
+                                materialTitles.length
                               }
                               onChange={handleSelectAllTitles}
                             />
@@ -882,7 +809,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Material type checklist:- Follows the selected titles */}
+                {/* Material type checklist */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
                     3. Material Types
@@ -978,7 +905,7 @@ export default function Flashcards() {
                   )}
                 </div>
 
-                {/* Number of cards to generate */}
+                {/* Number of cards */}
                 <div>
                   <label
                     htmlFor="card-count"
@@ -1004,7 +931,7 @@ export default function Flashcards() {
                 </div>
               </div>
 
-              {/* Explain when the current selections match no materials */}
+              {/* Explain when selections match no materials */}
               {validSelectedTopics.length > 0 &&
                 validSelectedTitles.length > 0 &&
                 validSelectedMaterialTypes.length > 0 &&
@@ -1044,199 +971,14 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Revision modal:- All cards for the chosen topic */}
-        {viewSetKey && activeSet && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#2D4030]/60 p-2 sm:p-4">
-            <section
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="study-title"
-              className="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-[#FDF3EC] p-3 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-5"
-            >
-              <div className="flex shrink-0 items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h2
-                    id="study-title"
-                    className="truncate text-xl font-bold sm:text-2xl"
-                  >
-                    {activeSet.topic}
-                  </h2>
-
-                  <p className="mt-1 text-sm text-[#74675F]">
-                    Revise all flashcards in this topic.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCloseStudy}
-                  aria-label="Close flashcards"
-                  className="shrink-0 rounded-xl p-2 transition hover:bg-[#E8EDE2]"
-                >
-                  <X size={21} />
-                </button>
-              </div>
-
-              {/* Display all cards in this topic */}
-              {topicFlashcards.length > 0 ? (
-                <>
-                  <div className="mt-4 flex shrink-0 items-center justify-between text-xs sm:text-sm">
-                    <span className="font-semibold">
-                      Card {currentCardIndex + 1} of {topicFlashcards.length}
-                    </span>
-
-                    <span className="text-[#74675F]">
-                      {isFlipped ? "Answer" : "Question"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 h-1.5 shrink-0 overflow-hidden rounded-full bg-[#E6D7CA]">
-                    <div
-                      className="h-full rounded-full bg-[#F27A58] transition-all duration-300"
-                      style={{
-                        width: `${
-                          ((currentCardIndex + 1) / topicFlashcards.length) * 100
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                  {currentCard && (
-                    <div className="flex min-h-0 flex-1 items-center justify-center gap-1 py-3 sm:gap-4">
-                      <button
-                        type="button"
-                        onClick={handlePreviousCard}
-                        disabled={currentCardIndex === 0}
-                        aria-label="Previous flashcard"
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2D4030] shadow-sm transition hover:bg-[#E8EDE2] disabled:cursor-not-allowed disabled:opacity-30 sm:h-12 sm:w-12"
-                      >
-                        <ChevronLeft size={24} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleFlip}
-                        aria-label={isFlipped ? "Show question" : "Show answer"}
-                        className="relative h-[min(52dvh,420px)] min-h-[220px] w-full max-w-[290px] shrink rounded-[22px] text-left outline-none focus-visible:ring-4 focus-visible:ring-[#F27A58]/50 [perspective:1000px]"
-                      >
-                        <div
-                          className="relative h-full w-full rounded-[22px] transition-transform duration-500 [transform-style:preserve-3d]"
-                          style={{
-                            transform: isFlipped
-                              ? "rotateY(180deg)"
-                              : "rotateY(0deg)",
-                          }}
-                        >
-                          {/* Question side */}
-                          <div
-                            className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-[22px] p-4 text-center shadow-lg [backface-visibility:hidden] sm:p-6"
-                            style={{
-                              backgroundColor:
-                                cardColors[currentCardIndex % cardColors.length],
-                              color: "#2D4030",
-                            }}
-                          >
-                            <span className="mb-4 rounded-full bg-white/30 px-3 py-2 text-xs font-semibold uppercase tracking-widest">
-                              <BookOpen size={14} className="mr-1 inline" />
-                              Question
-                            </span>
-
-                            <span className="max-h-[65%] overflow-y-auto whitespace-pre-wrap break-words text-lg font-bold leading-relaxed sm:text-xl">
-                              {currentCard.question}
-                            </span>
-
-                            <span className="mt-4 flex shrink-0 items-center gap-2 text-xs font-medium opacity-80 sm:text-sm">
-                              <RotateCw size={15} />
-                              Tap to reveal answer
-                            </span>
-                          </div>
-
-                          {/* Answer side */}
-                          <div
-                            className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-[22px] p-4 text-center shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)] sm:p-6"
-                            style={{
-                              backgroundColor:
-                                cardColors[
-                                  (currentCardIndex + 1) % cardColors.length
-                                ],
-                              color: "#2D4030",
-                            }}
-                          >
-                            <span className="mb-4 rounded-full bg-white/30 px-3 py-2 text-xs font-semibold uppercase tracking-widest">
-                              <Sparkles size={14} className="mr-1 inline" />
-                              Answer
-                            </span>
-
-                            <span className="max-h-[65%] overflow-y-auto whitespace-pre-wrap break-words text-base font-medium leading-relaxed sm:text-lg">
-                              {currentCard.answer}
-                            </span>
-
-                            <span className="mt-4 flex shrink-0 items-center gap-2 text-xs font-medium opacity-80 sm:text-sm">
-                              <RotateCw size={15} />
-                              Tap to see question
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleNextCard}
-                        disabled={
-                          currentCardIndex === topicFlashcards.length - 1
-                        }
-                        aria-label="Next flashcard"
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2D4030] text-white shadow-sm transition hover:bg-[#405743] disabled:cursor-not-allowed disabled:opacity-30 sm:h-12 sm:w-12"
-                      >
-                        <ChevronRight size={24} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Delete the current card */}
-                  {currentCard && (
-                    <div className="flex shrink-0 justify-center pb-1">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCard(currentCard)}
-                        className="rounded-lg px-3 py-2 text-xs font-semibold text-[#9A4432] transition hover:bg-white sm:text-sm"
-                      >
-                        Delete this card
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center px-4 text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8EDE2]">
-                    <BookOpen size={24} />
-                  </div>
-
-                  <h3 className="font-semibold">No flashcards yet</h3>
-
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-[#74675F]">
-                    Generate flashcards for {activeSet.topic}, then return here
-                    to revise them.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTopics([activeSet.topic]);
-                      setSelectedMaterialTitles([]);
-                      setSelectedMaterialTypes([]);
-                      setViewSetKey(null);
-                      setShowGenerationForm(true);
-                    }}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#2D4030] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#405743]"
-                  >
-                    <Sparkles size={16} />
-                    Generate Flashcards
-                  </button>
-                </div>
-              )}
-            </section>
-          </div>
+        {/* Reuse the shared flashcard assessment component. */}
+        {activeSet && (
+          <FlashcardAssessment
+            topic={activeSet.topic}
+            flashcards={activeSet.cards}
+            onClose={handleCloseStudy}
+            onDeleteCard={handleDeleteCard}
+          />
         )}
       </main>
     </DashboardLayout>

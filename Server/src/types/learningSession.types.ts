@@ -5,10 +5,9 @@ export interface LearningSession{
     title:string;
     description?:string;
     order:number;
-
     quizIds:string[];
+    passedQuizIds: string[];            // quizzes Ids passed with at least 80%
     flashcardIds:string[];
-
     quizCompleted:boolean;
     flashcardCompleted:boolean;
     isUnlocked:boolean;

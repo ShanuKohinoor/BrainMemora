@@ -3,12 +3,16 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { DashboardLayout } from "../components/DashboardLayout";
-
-import { getOneLearningSession } from "../services/learningSessionService";
+import {
+    getOneLearningSession,
+    completeFlashcardsSession
+} from "../services/learningSessionService";
 
 import type { LearningSession } from "../types/learningSession.types";
 import type { Quiz } from "../types/quiz.types";
 import type { Flashcard } from "../types/flashcard.types";
+
+import FlashcardAssessment from "../components/FlashcardAssessment";
 
 interface LearningSessionData {
     session: LearningSession;
@@ -26,6 +30,33 @@ export default function LearningSessionDetails() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const [showFlashcards, setShowFlashcards] = useState(false);
+    const [isCompletingReview, setIsCompletingReview] = useState(false);
+
+    // Save flashcard completion in the backend
+    const handleFinishReview = async () => {
+        if (!sessionId || isCompletingReview) return;
+
+        try {
+            setIsCompletingReview(true);
+
+            const updatedSession =
+                await completeFlashcardsSession(sessionId);
+
+            setSessionData((previousData) =>
+                previousData
+                    ? { ...previousData, session: updatedSession }
+                    : previousData
+            );
+        } catch (error) {
+            console.error("Error completing flashcards:", error);
+            throw error;
+        } finally {
+            setIsCompletingReview(false);
+        }
+    };
+
+    // Fetch the selected learning session
     useEffect(() => {
         const fetchSession = async () => {
             if (!sessionId) {
@@ -91,10 +122,16 @@ export default function LearningSessionDetails() {
                 <div>
                     <button
                         type="button"
-                        onClick={() => navigate(-1)}
+                        onClick={() => {
+                            if (showFlashcards) {
+                                setShowFlashcards(false);
+                            } else {
+                                navigate(-1);
+                            }
+                        }}
                         className="mb-4 text-sm font-medium text-[#2D4030]"
                     >
-                        ← Back to Learning Sessions
+                        ← Back
                     </button>
 
                     <h1 className="text-3xl font-bold text-[#2D4030]">
@@ -104,101 +141,135 @@ export default function LearningSessionDetails() {
                     <p className="mt-2 text-gray-600">
                         {session.description || session.topic}
                     </p>
+
+                    {session.isCompleted && (
+                        <p className="mt-3 font-semibold text-green-600">
+                            ✓ Learning session completed!
+                        </p>
+                    )}
                 </div>
 
-                {/* Flashcards section */}
-                <section className="space-y-4">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-[#2D4030]">
-                            Flashcards
+                {showFlashcards ? (
+                    /* Flashcard review screen */
+                    <section>
+                        <h2 className="mb-4 text-2xl font-semibold text-[#2D4030]">
+                            Review Flashcards
                         </h2>
-                        <p className="text-sm text-gray-500">
-                            {flashcards.length} flashcards in this session
-                        </p>
-                    </div>
 
-                    {flashcards.length === 0 ? (
-                        <p className="rounded-xl bg-white p-5 text-gray-500">
-                            No flashcards available.
-                        </p>
-                    ) : (
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            {flashcards.map((card) => (
-                                <div
-                                    key={card._id}
-                                    className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                                >
-                                    <h3 className="font-semibold text-[#2D4030]">
-                                        {card.question}
-                                    </h3>
+                        {flashcards.length === 0 ? (
+                            <p className="rounded-xl bg-white p-5 text-gray-500">
+                                No flashcards available.
+                            </p>
+                        ) : (
+                            <FlashcardAssessment
+                                topic={session.topic}
+                                flashcards={flashcards}
+                                onClose={() => setShowFlashcards(false)}
+                                onCompleted={handleFinishReview}
+                            />
+                        )}
+                    </section>
+                ) : (
+                    /* Session activity selection */
+                    <div className="grid gap-6 md:grid-cols-2">
 
-                                    <div className="mt-4 rounded-lg bg-[#FDF3EC] p-4">
-                                        <p className="text-sm font-medium text-[#F27A58]">
-                                            Answer
-                                        </p>
-                                        <p className="mt-1 text-gray-700">
-                                            {card.answer}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                        {/* Quiz option */}
+                        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="text-2xl font-semibold text-[#2D4030]">
+                                Quizzes
+                            </h2>
 
-                {/* Quizzes section */}
-                <section className="space-y-4">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-[#2D4030]">
-                            Quizzes
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                            {quizzes.length} quizzes in this session
-                        </p>
-                    </div>
+                            <p className="mt-2 text-sm text-gray-500">
+                                {quizzes.length} quizzes in this session
+                            </p>
 
-                    {quizzes.length === 0 ? (
-                        <p className="rounded-xl bg-white p-5 text-gray-500">
-                            No quizzes available.
-                        </p>
-                    ) : (
-                        <div className="space-y-5">
-                            {quizzes.map((quiz) => (
-                                <div
-                                    key={quiz._id}
-                                    className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                                >
-                                    <h3 className="mb-4 text-lg font-semibold text-[#2D4030]">
-                                        {quiz.title}
-                                    </h3>
+                            <div className="mt-5 space-y-4">
+                                {quizzes.length === 0 ? (
+                                    <p className="text-sm text-gray-500">
+                                        No quizzes available.
+                                    </p>
+                                ) : (
+                                    quizzes.map((quiz: Quiz) => {
+                                        const isPassed =
+                                            session.passedQuizIds?.includes(
+                                                quiz._id
+                                            );
 
-                                    <div className="space-y-5">
-                                        {quiz.questions.map((question, index) => (
-                                            <div key={index}>
-                                                <p className="font-medium text-gray-800">
-                                                    {index + 1}. {question.question}
-                                                </p>
+                                        return (
+                                            <div
+                                                key={quiz._id}
+                                                className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-4"
+                                            >
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-800">
+                                                        {quiz.title}
+                                                    </h3>
 
-                                                <div className="mt-3 space-y-2">
-                                                    {question.options.map(
-                                                        (option, optionIndex) => (
-                                                            <div
-                                                                key={optionIndex}
-                                                                className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700"
-                                                            >
-                                                                {option}
-                                                            </div>
-                                                        )
-                                                    )}
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {isPassed
+                                                            ? "✓ Passed"
+                                                            : "Not completed"}
+                                                    </p>
                                                 </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        navigate(`/quiz/${quiz._id}`)
+                                                    }
+                                                    className="shrink-0 rounded-lg bg-[#F27A58] px-4 py-2 text-sm font-semibold text-white hover:bg-[#df6948]"
+                                                >
+                                                    {isPassed ? "Review" : "Start Quiz"}
+                                                </button>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </section>
+
+                        {/* Flashcard option */}
+                        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="text-2xl font-semibold text-[#2D4030]">
+                                Flashcards
+                            </h2>
+
+                            <p className="mt-2 text-sm text-gray-500">
+                                {flashcards.length} flashcards in this session
+                            </p>
+
+                            <div className="mt-5">
+                                {flashcards.length === 0 ? (
+                                    <p className="text-sm text-gray-500">
+                                        No flashcards available.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <p className="mb-4 text-sm text-gray-600">
+                                            Review all flashcards to complete this activity.
+                                        </p>
+
+                                        {session.flashcardCompleted ? (
+                                            <p className="mb-3 font-semibold text-green-600">
+                                                ✓ Flashcards completed
+                                            </p>
+                                        ) : null}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowFlashcards(true)}
+                                            className="w-full rounded-lg bg-[#2D4030] px-4 py-3 font-semibold text-white hover:bg-[#243629]"
+                                        >
+                                            {session.flashcardCompleted
+                                                ? "Review Flashcards Again"
+                                                : "Review Flashcards"}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                )}
 
             </div>
         </DashboardLayout>

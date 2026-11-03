@@ -56,7 +56,7 @@ export default function LearningSession() {
 
     // Open the selected learning session
     const handleStartSession = (sessionId: string) => {
-        navigate(`/learning-session/${sessionId}`);
+        navigate(`/learningSessionDetails/${sessionId}`);
     };
 
     return (
@@ -70,7 +70,7 @@ export default function LearningSession() {
                         onClick={() => navigate("/materials")}
                         className="mb-4 text-sm font-medium text-[#2D4030] hover:underline"
                     >
-                        ← Back to Materials
+                         Back to Materials
                     </button>
 
                     <h1 className="text-2xl font-bold text-[#2D4030]">

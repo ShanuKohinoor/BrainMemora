@@ -1,102 +1,15 @@
+import type { Request, Response } from "express";
 import { quizModel } from "../models/quiz.js";
 import { quizResultModel } from "../models/quizResult.js";
-import type { QuizResult } from "../types/quizResults.types.js";
-import { BadRequest, NotFoundError, UnauthorizedError } from "../utils/error.js";
-import type { Request,Response } from "express";
+import { LearningSessionModel } from "../models/learningSession.js";
+import {
+  BadRequest,
+  NotFoundError,
+  UnauthorizedError,
+} from "../utils/error.js";
 
-export const submitQuizResult = async(
-    req:Request,
-    res:Response
-)=>{
-   if(!req.userId){
-      throw new UnauthorizedError("Please login first")
-   }
-
-
-   const userId = req.userId;
-   const {quizId,selectedAnswers} = req.body;
-
-     // Check whether selectedAnswers is an array
-   if(!Array.isArray(selectedAnswers)){
-    throw new BadRequest("Selected answers must be an array")
-   }
-
-
-   // Find the quiz need to get its correct answer
-   const quiz = await quizModel.findOne({
-      _id:quizId,                             
-      userId
-   })
-
-   if(!quiz){
-    throw new NotFoundError("Quiz not found")
-   }
-
-   if(selectedAnswers.length !== quiz.questions.length){
-      throw new BadRequest("Please fill all the questions")
-   }
-
-
-// Compare each selected answer with the correct answer and store the result
-   const answers = quiz.questions.map((question,index)=>{
-       // Get the users selected answer for the current question
-        const selectedAnswer = selectedAnswers[index]
-       // Check whether the selected answer is correct 
-        const isCorrect = selectedAnswer === question.correctAnswer
-
-        // Return the question details and the users answer(including whether it is correct or not)
-        return {
-            question:question.question,
-            selectedAnswer: selectedAnswer,
-            isCorrect,
-            correctAnswer:question.correctAnswer
-        }
-   })
-
-   const totalQuestions = quiz.questions.length;
-
-   //Count the no:of corrected answers
-   const correctAnswers = answers.filter((answer)=>
-    {
-       return answer.isCorrect === true
-    }).length
-
-
-
-    const score = correctAnswers;
-    const savedResult= await quizResultModel.create({
-        userId,
-        quizId,
-        score,
-        totalQuestions,      // Total questions in the quiz
-        correctAnswers,      // No:of correction answers
-        answers              // Details of each question and users answer
-    })
-
-   return res.status(201).json({
-     message: "Quiz Result submitted successfully",
-     success:true,
-     data:savedResult
-   })
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Get all attempts for a particular quiz
-export const getQuizHistory = async (
+// Submit quiz result
+export const submitQuizResult = async (
   req: Request,
   res: Response
 ) => {
@@ -105,13 +18,13 @@ export const getQuizHistory = async (
   }
 
   const userId = req.userId;
-const quizId = req.params.quizId;
+  const { quizId, selectedAnswers } = req.body;
 
-if (!quizId || Array.isArray(quizId)) {
-  throw new BadRequest("Invalid quiz ID");
-}
+  if (!Array.isArray(selectedAnswers)) {
+    throw new BadRequest("Selected answers must be an array");
+  }
 
-  // Check whether the quiz belongs to the logged-in user
+  // Find the quiz belonging to this user
   const quiz = await quizModel.findOne({
     _id: quizId,
     userId,
@@ -121,13 +34,157 @@ if (!quizId || Array.isArray(quizId)) {
     throw new NotFoundError("Quiz not found");
   }
 
-  // Find all attempts for this quiz and sort newest first
+  if (quiz.questions.length === 0) {
+    throw new BadRequest("This quiz has no questions");
+  }
+
+  if (selectedAnswers.length !== quiz.questions.length) {
+    throw new BadRequest("Please fill all the questions");
+  }
+
+  // Compare selected answers with correct answers
+  const answers = quiz.questions.map((question, index) => {
+    const selectedAnswer = selectedAnswers[index];
+
+    const isCorrect =
+      selectedAnswer === question.correctAnswer;
+
+    return {
+      question: question.question,
+      selectedAnswer,
+      isCorrect,
+      correctAnswer: question.correctAnswer,
+    };
+  });
+
+  const totalQuestions = quiz.questions.length;
+
+  const correctAnswers = answers.filter(
+    (answer) => answer.isCorrect
+  ).length;
+
+  // Calculate quiz percentage
+  const percentage =
+    (correctAnswers / totalQuestions) * 100;
+
+  // Save the quiz result
+  const savedResult = await quizResultModel.create({
+    userId,
+    quizId,
+    score: correctAnswers,
+    totalQuestions,
+    correctAnswers,
+    answers,
+  });
+
+  // Check whether this quiz belongs to a Learning Session
+  const session = await LearningSessionModel.findOne({
+    userId,
+    quizIds: quizId,
+  });
+
+  // Update session progress only if the quiz belongs to a session
+  if (session && percentage >= 80) {
+    // Remember this quiz as passed.
+    // $addToSet prevents duplicate quiz IDs.
+    await LearningSessionModel.updateOne(
+      { _id: session._id, userId },
+      {
+        $addToSet: {
+          passedQuizIds: quizId,
+        },
+      }
+    );
+
+    // Fetch the updated session
+    const updatedSession =
+      await LearningSessionModel.findById(session._id);
+
+    if (updatedSession) {
+      // Check whether every quiz has been passed
+      const allQuizzesPassed = updatedSession.quizIds.every(
+        (id) => updatedSession.passedQuizIds.includes(id)
+      );
+
+      if (allQuizzesPassed) {
+        // Both quiz and flashcard completion are required
+        const isSessionCompleted =
+          updatedSession.flashcardCompleted;
+
+        await LearningSessionModel.updateOne(
+          { _id: updatedSession._id, userId },
+          {
+            $set: {
+              quizCompleted: true,
+              ...(isSessionCompleted && {
+                isCompleted: true,
+              }),
+            },
+          }
+        );
+
+        // Unlock the next session only when both are completed
+        if (isSessionCompleted) {
+          const nextSession =
+            await LearningSessionModel.findOne({
+              userId,
+              topic: updatedSession.topic,
+              order: { $gt: updatedSession.order },
+            }).sort({ order: 1 });
+
+          if (nextSession) {
+            await LearningSessionModel.updateOne(
+              { _id: nextSession._id, userId },
+              {
+                $set: {
+                  isUnlocked: true,
+                },
+              }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  return res.status(201).json({
+    message: "Quiz Result submitted successfully",
+    success: true,
+    percentage,
+    data: savedResult,
+  });
+};
+
+// Get quiz attempt history
+export const getQuizHistory = async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.userId) {
+    throw new UnauthorizedError("Please login first");
+  }
+
+  const quizId  = req.params.id as string;
+  const userId = req.userId ;
+
+  // Check whether the quiz belongs to this user
+  const quiz = await quizModel.findOne({
+    _id: quizId,
+    userId,
+  });
+
+  if (!quiz) {
+    throw new NotFoundError("Quiz not found");
+  }
+
+  // Get all attempts for this quiz
   const history = await quizResultModel
     .find({ quizId, userId })
-    .sort({ completedAt: -1 });
+    .sort({ createdAt: -1 });
 
   return res.status(200).json({
     success: true,
+    message: "Quiz history fetched successfully",
     data: history,
   });
 };

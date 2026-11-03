@@ -32,3 +32,13 @@ export const getOneLearningSession = async (sessionId: string) => {
 
     return response.data.data;
 };
+
+
+// Mark flashcards as completed in a learning session
+export const completeFlashcardsSession = async (id: string) => {
+    const response = await api.patch(
+        `/api/session/learningSession/${id}/completeFlashcards`
+    );
+
+    return response.data.data;
+};

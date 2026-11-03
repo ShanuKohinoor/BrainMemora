@@ -1,6 +1,7 @@
 import express from "express";
 import { verifyUser } from "../middlewares/verifyUser.js";
-import { createLearningSessions,getLearningSession,getOneLearningSession  } from "../controllers/learningSessionController.js";
+import { createLearningSessions,getLearningSession,getOneLearningSession,completeFlashcards
+  } from "../controllers/learningSessionController.js";
 
 
 const router = express.Router()
@@ -15,7 +16,7 @@ router.get("/learningSession", verifyUser, getLearningSession);
 // Get one learning session using its ID
 router.get("/learningSession/:id", verifyUser, getOneLearningSession);
 
-
+router.patch("/learningSession/:id/completeFlashcards", verifyUser,completeFlashcards);
 
 
 export default router;

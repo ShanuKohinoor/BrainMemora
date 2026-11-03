@@ -6,7 +6,7 @@ const router = Router();
 
 
 router.post('/submitResult',verifyUser,submitQuizResult)
-router.get('/history/:quizId', verifyUser, getQuizHistory)
+router.get('/history/:id', verifyUser, getQuizHistory)
 
 export default router;
 

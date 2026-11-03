@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -16,7 +17,7 @@ import {
   History,
   GraduationCap
 } from "lucide-react";
-
+import QuizAssessment from "../components/QuizAssessment";
 import { DashboardLayout } from "../components/DashboardLayout";
 import {
   getAllQuizzes,
@@ -56,34 +57,40 @@ export default function QuizPage() {
     (state) => state.learningMaterials.materials
   ) as MaterialForQuiz[];
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
   // Store saved quizzes and loading states
-  //Store the quizzes already saved by the user
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  // Check if the saved quizzes are loading
   const [isLoading, setIsLoading] = useState(true);
-  // Store the ID of the quiz to delete
+
+  // Store the ID of the quiz being deleted
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  //Check if new quiz is generating
+
+  // Store the quiz selected for deletion
+  const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
+
+  // Check if a new quiz is generating
   const [isGenerating, setIsGenerating] = useState(false);
+
   // Which quiz to display
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
-  // Store the index of which question is currently displayed
+
+  // Store the index of the currently displayed question
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  // Store the selected answer for each question by user
+  // Store the selected answer for each question
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
 
   // Check whether the quiz has been finished
   const [isQuizFinished, setIsQuizFinished] = useState(false);
 
-
-  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);   //quizResult stores the result received from backend.
+  // Store the quiz result received from the backend
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
 
   // Store all attempts for the selected quiz
   const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
 
-  // Check whether the quiz history page should be displayed
+  // Check whether quiz history should be displayed
   const [showQuizHistory, setShowQuizHistory] = useState(false);
 
   // Check whether the user is viewing a previous quiz result
@@ -112,17 +119,19 @@ export default function QuizPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Control the reusable quiz assessment component
+  const [showQuizAssessment, setShowQuizAssessment] = useState(false);
+
   // Load saved quizzes and learning materials
-  useEffect(() => { //This tells React to run this code when the Quiz page loads
+  useEffect(() => {
     const loadQuizzes = async () => {
       try {
         const savedQuizzes = await getAllQuizzes();
         setQuizzes(savedQuizzes as Quiz[]);
       } catch {
-        // Handle errors when loading saved quizzes
         setErrorMessage("Failed to load saved quizzes. Please try again.");
       } finally {
-        setIsLoading(false); // Whether the request succeeds or fails,stop the loading state
+        setIsLoading(false);
       }
     };
 
@@ -130,11 +139,11 @@ export default function QuizPage() {
     dispatch(fetchLearningMaterials());
   }, [dispatch]);
 
-  // Extracts only the topic names from all materials and removes duplicates
+  // Extract unique topic names from all materials
   const availableTopics = useMemo(
     () =>
       [...new Set(materials.map((material) => material.topic).filter(Boolean))],
-    [materials] // If materials changes, recalculate availableTopics. Otherwise use the same
+    [materials]
   );
 
   // Get materials that belong to the selected topics
@@ -148,12 +157,11 @@ export default function QuizPage() {
 
   // Get unique titles from the selected topics
   const availableTitles = useMemo(
-    () =>
-      [
-        ...new Set(
-          topicMaterials.map((material) => material.title).filter(Boolean)
-        ),
-      ],
+    () => [
+      ...new Set(
+        topicMaterials.map((material) => material.title).filter(Boolean)
+      ),
+    ],
     [topicMaterials]
   );
 
@@ -183,7 +191,7 @@ export default function QuizPage() {
     [titleMaterials, selectedTypes]
   );
 
-  // Group saved quizzes by topic.
+  // Group saved quizzes by topic
   const quizSets: QuizSet[] = useMemo(() => {
     const groupedQuizzes: Record<string, Quiz[]> = {};
 
@@ -243,6 +251,8 @@ export default function QuizPage() {
   // Start a quiz from the first question
   const handleStartQuiz = (quizId: string) => {
     setSelectedQuizId(quizId);
+    setShowQuizAssessment(true);
+
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
     setIsQuizFinished(false);
@@ -254,6 +264,7 @@ export default function QuizPage() {
 
   // Load all attempts for the selected quiz
   const handleViewHistory = async (quizId: string) => {
+    setShowQuizAssessment(false);
     setErrorMessage("");
     setQuizHistory([]);
     setSelectedQuizId(quizId);
@@ -307,23 +318,26 @@ export default function QuizPage() {
   };
 
   // Finish the quiz and show the result
-  const handleFinishQuiz = async() => {
-    if(!selectedQuiz) return
+  const handleFinishQuiz = async () => {
+    if (!selectedQuiz) return;
 
-    try{
-      const response = await showQuizResult(selectedQuiz._id,selectedAnswers)
+    try {
+      const response = await showQuizResult(
+        selectedQuiz._id,
+        selectedAnswers
+      );
 
-      setQuizResult(response.data)
+      setQuizResult(response.data);
       setIsQuizFinished(true);
-
-    }catch(error){
-       setErrorMessage("Failed to submit Quiz result")
+    } catch {
+      setErrorMessage("Failed to submit Quiz result");
     }
   };
 
   // Return to the saved quiz list
   const handleExitQuiz = () => {
     setSelectedQuizId(null);
+    setShowQuizAssessment(false);
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
     setIsQuizFinished(false);
@@ -333,7 +347,7 @@ export default function QuizPage() {
     setIsViewingHistoryResult(false);
   };
 
-  // Retry the same quiz with a fresh set of answers
+  // Retry the same quiz with fresh answers
   const handleRetryQuiz = () => {
     setCurrentQuestionIndex(0);
     setSelectedAnswers([]);
@@ -344,15 +358,14 @@ export default function QuizPage() {
     setShowQuizHistory(false);
   };
 
-
-  // Open the modal and clear previous messages.
+  // Open the generation modal and clear previous messages
   const openGenerationForm = () => {
     setErrorMessage("");
     setSuccessMessage("");
     setShowGenerationForm(true);
   };
 
-  // Close the modal and reset the selections.
+  // Close the modal and reset the selections
   const closeGenerationForm = () => {
     if (isGenerating) return;
 
@@ -367,7 +380,7 @@ export default function QuizPage() {
     setErrorMessage("");
   };
 
-  // Add or remove a topic from the selection.
+  // Add or remove a topic from the selection
   const toggleTopic = (topic: string) => {
     setSelectedTopics((current) =>
       current.includes(topic)
@@ -375,12 +388,11 @@ export default function QuizPage() {
         : [...current, topic]
     );
 
-    // Reset titles and types when the topics change.
     setSelectedTitles([]);
     setSelectedTypes([]);
   };
 
-  // Add or remove a title from the selection.
+  // Add or remove a title from the selection
   const toggleTitle = (title: string) => {
     setSelectedTitles((current) =>
       current.includes(title)
@@ -388,11 +400,10 @@ export default function QuizPage() {
         : [...current, title]
     );
 
-    // Reset types when the titles change.
     setSelectedTypes([]);
   };
 
-  // Add or remove a material type from the selection.
+  // Add or remove a material type from the selection
   const toggleType = (type: MaterialType) => {
     setSelectedTypes((current) =>
       current.includes(type)
@@ -401,7 +412,7 @@ export default function QuizPage() {
     );
   };
 
-  // Generate and save a quiz from the selected materials.
+  // Generate and save a quiz from the selected materials
   const handleGenerateQuiz = async () => {
     setErrorMessage("");
     setSuccessMessage("");
@@ -424,12 +435,12 @@ export default function QuizPage() {
     setIsGenerating(true);
 
     try {
-      // Get the database IDs of the selected materials.
+      // Get the database IDs of the selected materials
       const materialIds = selectedMaterials
         .map((material) => material._id || material.id)
         .filter((id): id is string => Boolean(id));
 
-      // Make sure every selected material has an ID.
+      // Make sure every selected material has an ID
       if (materialIds.length !== selectedMaterials.length) {
         setErrorMessage(
           "Some selected materials have no valid ID. Please refresh and try again."
@@ -437,19 +448,19 @@ export default function QuizPage() {
         return;
       }
 
-      // Ask the backend to extract text and generate questions.
+      // Ask the backend to extract text and generate questions
       const questions = await generateQuizQuestions(
         materialIds,
         numberOfQuestions
       );
 
-      // Check whether the backend generated any questions.
+      // Check whether the backend generated any questions
       if (!questions || questions.length === 0) {
         setErrorMessage("No questions were generated. Please try again.");
         return;
       }
 
-      // Save the quiz and link its source materials.
+      // Save the quiz and link its source materials
       const savedQuiz = await createQuiz({
         topic: selectedTopics.join(", "),
         title:
@@ -463,7 +474,7 @@ export default function QuizPage() {
         questions,
       });
 
-      // Add the new quiz to the saved quiz list.
+      // Add the new quiz to the saved quiz list
       setQuizzes((current) => [
         savedQuiz as Quiz,
         ...current,
@@ -481,25 +492,20 @@ export default function QuizPage() {
     } catch {
       setErrorMessage("Failed to generate the quiz. Please try again.");
     } finally {
-      // Stop the loading state whether generation succeeds or fails.
       setIsGenerating(false);
     }
   };
 
-  // Delete a saved quiz.
-  const handleDeleteQuiz = async (quiz: Quiz) => {
-    const quizId = quiz._id;
+  // Open the delete confirmation dialog
+  const handleDeleteQuiz = (quiz: Quiz) => {
+    setQuizToDelete(quiz);
+  };
 
-    if (!quizId) {
-      setErrorMessage("This quiz does not have a valid ID.");
-      return;
-    }
+  // Delete the quiz after confirmation
+  const confirmDeleteQuiz = async () => {
+    if (!quizToDelete?._id) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this quiz?"
-    );
-
-    if (!confirmed) return;
+    const quizId = quizToDelete._id;
 
     setDeletingId(quizId);
     setErrorMessage("");
@@ -507,14 +513,14 @@ export default function QuizPage() {
     try {
       await deleteQuiz(quizId);
 
-      // Remove the deleted quiz from the page.
       setQuizzes((current) =>
         current.filter((item) => item._id !== quizId)
       );
+
+      setQuizToDelete(null);
     } catch {
       setErrorMessage("Failed to delete the quiz. Please try again.");
     } finally {
-      // Clear the deleting state after the request finishes.
       setDeletingId(null);
     }
   };
@@ -533,14 +539,15 @@ export default function QuizPage() {
               materials
             </p>
           </div>
-          <button
-             type="button"
-             onClick={() => navigate("/learningSession")}
-             className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]">
-              <GraduationCap size={20} />
-                  Learning Sessions
-          </button>
 
+          <button
+            type="button"
+            onClick={() => navigate("/learningSession")}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
+          >
+            <GraduationCap size={20} />
+            Learning Sessions
+          </button>
         </div>
 
         {/* Show page messages */}
@@ -560,9 +567,7 @@ export default function QuizPage() {
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           {/* Left side: Create quiz card */}
           <section className="rounded-2xl border border-[#E9DED4] bg-white p-5 shadow-sm">
-            {/* Quiz clipboard*/}
             <div className="relative mb-5 flex h-24 w-24 items-center justify-center rounded-2xl bg-[#A7C1D0]">
-              {/* Main quiz clipboard */}
               <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#FDF3EC]">
                 <ClipboardCheck
                   size={42}
@@ -570,7 +575,7 @@ export default function QuizPage() {
                   className="text-[#2D4030]"
                 />
               </div>
-              {/* Question mark badge */}
+
               <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#FDF3EC] bg-[#F27A58]">
                 <CircleHelp
                   size={22}
@@ -579,6 +584,7 @@ export default function QuizPage() {
                 />
               </div>
             </div>
+
             <h2 className="text-lg font-bold">Create a Quiz</h2>
 
             <p className="mt-2 text-sm leading-6 text-[#6B7568]">
@@ -598,7 +604,7 @@ export default function QuizPage() {
 
           {/* Right side: Saved quizzes */}
           <section className="min-w-0">
-            {!selectedQuiz ? (
+            {!selectedQuiz || showQuizAssessment ? (
               <>
                 <div className="mb-4 flex items-center gap-2">
                   <ClipboardList className="h-5 w-5 text-[#F27A58]" />
@@ -702,15 +708,12 @@ export default function QuizPage() {
               </>
             ) : (
               <div className="rounded-2xl border border-[#E9DED4] bg-white p-5 shadow-sm sm:p-7">
-
                 {/* Display the history of the selected quiz */}
                 {showQuizHistory ? (
                   <>
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h2 className="text-xl font-bold">
-                          Quiz History
-                        </h2>
+                        <h2 className="text-xl font-bold">Quiz History</h2>
 
                         <p className="mt-1 text-sm text-[#6B7568]">
                           {selectedQuiz.title}
@@ -735,9 +738,7 @@ export default function QuizPage() {
                       <div className="rounded-xl border border-dashed border-[#D8C8BA] p-8 text-center">
                         <History className="mx-auto mb-3 h-10 w-10 text-[#A3B19B]" />
 
-                        <h3 className="font-semibold">
-                          No attempts yet
-                        </h3>
+                        <h3 className="font-semibold">No attempts yet</h3>
 
                         <p className="mt-2 text-sm text-[#6B7568]">
                           Start this quiz to create your first attempt.
@@ -903,9 +904,7 @@ export default function QuizPage() {
                             <button
                               type="button"
                               onClick={handleFinishQuiz}
-                              disabled={
-                                !selectedAnswers[currentQuestionIndex]
-                              }
+                              disabled={!selectedAnswers[currentQuestionIndex]}
                               className="rounded-lg bg-[#2D4030] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3c5540] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Finish Quiz
@@ -914,9 +913,7 @@ export default function QuizPage() {
                             <button
                               type="button"
                               onClick={handleNextQuestion}
-                              disabled={
-                                !selectedAnswers[currentQuestionIndex]
-                              }
+                              disabled={!selectedAnswers[currentQuestionIndex]}
                               className="inline-flex items-center gap-2 rounded-lg bg-[#F27A58] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Next
@@ -967,7 +964,7 @@ export default function QuizPage() {
                           {quizResult && quizResult.totalQuestions > 0
                             ? getPercentage(quizResult)
                             : 0}
-                            % correct answers
+                          % correct answers
                         </p>
                       </div>
                     </div>
@@ -1025,25 +1022,24 @@ export default function QuizPage() {
                             )}
 
                             {/* Show the explanation separately below the answers */}
-                          {answer.explanation && (
-                            <div className="mt-4 rounded-lg bg-[#FDF3EC] p-3">
-                              <p className="text-sm font-semibold text-[#2D4030]">
-                                Explanation
-                              </p>
+                            {answer.explanation && (
+                              <div className="mt-4 rounded-lg bg-[#FDF3EC] p-3">
+                                <p className="text-sm font-semibold text-[#2D4030]">
+                                  Explanation
+                                </p>
 
-                              <p className="mt-1 text-sm leading-6 text-[#6B7568]">
-                                {answer.explanation}
-                              </p>
-                            </div>
-                          )}                          
-                        </div>
+                                <p className="mt-1 text-sm leading-6 text-[#6B7568]">
+                                  {answer.explanation}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Retry and exit buttons */}
                     <div className="mt-7 flex items-center justify-between gap-3">
-
                       <button
                         type="button"
                         onClick={
@@ -1070,7 +1066,6 @@ export default function QuizPage() {
                           <RotateCcw className="h-5 w-5" />
                         </button>
                       )}
-
                     </div>
                   </>
                 )}
@@ -1079,12 +1074,83 @@ export default function QuizPage() {
           </section>
         </div>
 
-        {/* Quiz generation modal */}
+        {/* Reusable quiz assessment */}
+        {showQuizAssessment && selectedQuiz && (
+          <QuizAssessment
+            quiz={selectedQuiz}
+            onClose={handleExitQuiz}
+          />
+        )}
+
+        {/* Delete quiz confirmation dialog */}
+        {quizToDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2D4030]/60 p-4">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-quiz-title"
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2
+                    id="delete-quiz-title"
+                    className="text-xl font-bold text-[#2D4030]"
+                  >
+                    Delete Quiz?
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-[#6B7568]">
+                    Are you sure you want to delete{" "}
+                    <strong>
+                      {quizToDelete.title || "Untitled Quiz"}
+                    </strong>
+                    ? This action cannot be undone.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setQuizToDelete(null)}
+                  disabled={deletingId === quizToDelete._id}
+                  aria-label="Close confirmation"
+                  className="rounded-lg p-2 text-[#6B7568] hover:bg-[#FDF3EC] disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuizToDelete(null)}
+                  disabled={deletingId === quizToDelete._id}
+                  className="rounded-lg border border-[#D8C8BA] px-4 py-2 text-sm font-semibold text-[#2D4030] hover:bg-[#FDF3EC] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmDeleteQuiz}
+                  disabled={deletingId === quizToDelete._id}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deletingId === quizToDelete._id
+                    ? "Deleting..."
+                    : "Delete"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Quiz generation form */}
         {showGenerationForm && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#2D4030]/60 p-3 sm:p-5"
             onMouseDown={(event) => {
-              // Close the modal when the user clicks outside it.
+              // Close the modal when the user clicks outside it
               if (
                 event.target === event.currentTarget &&
                 !isGenerating
@@ -1132,7 +1198,7 @@ export default function QuizPage() {
                 </div>
               )}
 
-              {/* Use two columns on wider screens to keep the modal compact */}
+              {/* Use two columns on wider screens */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Topic selection */}
                 <div>

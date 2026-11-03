@@ -25,28 +25,34 @@ const learningSessionSchema = new mongoose.Schema<LearningSession>({
     },
     quizIds:{
         type: [String],
-        default: []
+        default:[]
+    },
+    passedQuizIds:{
+        type:[String],
+        default:[]
     },
     flashcardIds:{
         type:[String],
         default:[]
     },
-    quizCompleted:{
+    quizCompleted:{               // Tracks quiz completion
         type:Boolean,
         default:false
     },
-    flashcardCompleted:{
+    flashcardCompleted:{         // Tracks flashcard completion
         type:Boolean,
         default:false
     },
-
+    completedAt: {                 // Stores the completion date
+        type: Date
+    },
     isUnlocked:{
         type:Boolean,
-        required:true
+        default:false
     },
-    isCompleted:{
+    isCompleted:{                // Tracks overall session completion
         type:Boolean,
-        required:true
+        default:false
     }
 },{timestamps:true})
 
