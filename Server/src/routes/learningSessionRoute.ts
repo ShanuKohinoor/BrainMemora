@@ -8,10 +8,12 @@ const router = express.Router()
 
 // Create learning sessions
 router.post('/learningSession',verifyUser,createLearningSessions )
-// Get learning sessions
+
+// Get all learning sessions for a topic
 router.get("/learningSession", verifyUser, getLearningSession);
 
-router.get("/onelearningSession", verifyUser, getOneLearningSession);
+// Get one learning session using its ID
+router.get("/learningSession/:id", verifyUser, getOneLearningSession);
 
 
 
