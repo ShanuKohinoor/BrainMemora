@@ -8,11 +8,9 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  GraduationCap,
 } from "lucide-react";
 
 import FlashcardAssessment from "../components/FlashcardAssessment";
-import { useNavigate } from "react-router";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { fetchNotes } from "../features/notes/noteSlice";
@@ -47,7 +45,6 @@ const materialTypes: { value: MaterialType; label: string }[] = [
 
 export default function Flashcards() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
 
   const notes = useAppSelector((state) => state.notes.notes);
   const materials = useAppSelector(
@@ -444,15 +441,6 @@ export default function Flashcards() {
                 recalling what you know.
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/learningSession")}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-4 py-3 font-semibold text-white hover:bg-[#DE6848]"
-            >
-              <GraduationCap size={20} />
-              Learning Sessions
-            </button>
           </div>
         </header>
 

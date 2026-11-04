@@ -13,6 +13,7 @@ import type { Quiz } from "../types/quiz.types";
 import type { Flashcard } from "../types/flashcard.types";
 
 import FlashcardAssessment from "../components/FlashcardAssessment";
+import QuizAssessment from "../components/QuizAssessment";
 
 interface LearningSessionData {
     session: LearningSession;
@@ -32,6 +33,7 @@ export default function LearningSessionDetails() {
 
     const [showFlashcards, setShowFlashcards] = useState(false);
     const [isCompletingReview, setIsCompletingReview] = useState(false);
+    const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
 
     // Save flashcard completion in the backend
     const handleFinishReview = async () => {
@@ -215,7 +217,7 @@ export default function LearningSessionDetails() {
                                                 <button
                                                     type="button"
                                                     onClick={() =>
-                                                        navigate(`/quiz/${quiz._id}`)
+                                                        setSelectedQuiz(quiz)
                                                     }
                                                     className="shrink-0 rounded-lg bg-[#F27A58] px-4 py-2 text-sm font-semibold text-white hover:bg-[#df6948]"
                                                 >
@@ -272,6 +274,12 @@ export default function LearningSessionDetails() {
                 )}
 
             </div>
+            {selectedQuiz && (
+                <QuizAssessment
+                    quiz={selectedQuiz}
+                    onClose={() => setSelectedQuiz(null)}
+                />
+                )}
         </DashboardLayout>
     );
 }
