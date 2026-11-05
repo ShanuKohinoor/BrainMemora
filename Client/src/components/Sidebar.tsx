@@ -8,6 +8,7 @@ import {
     NotebookPen,
     Layers,
     FileQuestion,
+    GraduationCap,
     Bot,
     Trophy,
     Settings,
@@ -20,10 +21,11 @@ const navigationItems = [
     {label:"My Library",path:"/allLearningMaterials",icon:LibraryBig},
     {label:"Notes",path:"/notes",icon:NotebookPen},
     {label:"Flashcards",path:"/flashcards",icon:Layers},
-    { label: "Quiz Center", path: "/quizzes",icon:FileQuestion },
-    { label: "AI Assistant", path: "/ai-assistant",icon:Bot },
-    { label: "Rewards", path: "/rewards",icon:Trophy },
-    { label: "Settings", path: "/settings",icon:Settings }
+    {label: "Quiz Center", path: "/quizzes",icon:FileQuestion },
+    {label: "Learning Session", path: "/learningSession",icon:GraduationCap },
+    {label: "AI Assistant", path: "/ai-assistant",icon:Bot },
+    {label: "Rewards", path: "/rewards",icon:Trophy },
+    {label: "Settings", path: "/settings",icon:Settings }
 ]
 
 // Define the sidebar visibility props
@@ -50,37 +52,45 @@ export function Sidebar({isOpen}:sideBarOpenProps){ // Receive the visibility st
       <>
        {/* Dispaly the sidebar only when it is open */}
         {isOpen && (
-         <aside className="fixed left-0 top-0 z-40 flex h-screen w-50 flex-col overflow-hidden bg-[#A3B19B] p-4">            
-            <div className="mb-8 items-center gap-3 px-2 py-2">
-                <span className="text-lg font-bold text-[#2D4030]">
-                    BrainMemora
-                </span>
-            </div>
-            {navigationItems.map((item)=>(
-                <NavLink 
-                  key={item.path} 
-                  to={item.path}
-                  className={({isActive})=>
-                   isActive
-                   ? "flex mt-2 items-center gap-1 rounded-full bg-[#FDF3EC]/80 px-4 py-3 text-[#2D4030]"
-                   : "flex mt-2 items-center gap-1 rounded-full px-4 py-3 bg-[#FDF3EC]/20 text-[#2D4030] hover:bg-[#FDF3EC]/50"
-                   }
-                >   
-                    <item.icon size={20}/>
-                    {item.label}
-                    </NavLink>
-            ))}
-            <button
-                type="button"
-                onClick={handleLogout}
-                className="flex mb-2 items-center gap-3 mt-5 font-bold rounded-lg px-4 py-3 text-left text-[#2D4030] hover:bg-[#FDF3EC]/50"
+            <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col overflow-hidden bg-[#A3B19B] p-4">
+
+                {/* Logo */}
+                <div className="mb-6 px-2 py-2">
+                    <span className="text-lg font-bold text-[#2D4030]">
+                        BrainMemora
+                    </span>
+                </div>
+
+                {/* Navigation links */}
+                <nav className="flex flex-col gap-1">
+                    {navigationItems.map((item) => (
+                        <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className={({ isActive }) =>
+                                isActive
+                                    ? "flex items-center gap-3 whitespace-nowrap rounded-full bg-[#FDF3EC]/80 px-3 py-2.5 text-[#2D4030]"
+                                    : "flex items-center gap-3 whitespace-nowrap rounded-full bg-[#FDF3EC]/20 px-3 py-2.5 text-[#2D4030] hover:bg-[#FDF3EC]/50"
+                            }
+                        >
+                            <item.icon size={20} />
+                            {item.label}
+                        </NavLink>
+                    ))}
+                </nav>
+
+                {/* Logout */}
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="mt-auto flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 font-bold text-[#2D4030] hover:bg-[#FDF3EC]/50"
                 >
-                <LogOut/>
-                Logout
-            </button>
-        </aside>
-        
+                    <LogOut size={20} />
+                    Logout
+                </button>
+
+            </aside>
         )}
     </>
-    )
+);
 }

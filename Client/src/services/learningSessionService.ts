@@ -6,7 +6,7 @@ export const createLearningSessions = async(
     topic:string,
 )=>{
      const response = await api.post('/api/session/learningSession',{
-        topic
+        topic 
      })
      return response.data
 }
@@ -14,10 +14,10 @@ export const createLearningSessions = async(
 
 // Get all learning sessions
 export const getLearningSessions = async(
-    topic:string
+    topic ?:string
 )=>{
     const response = await api.get('/api/session/learningSession',{
-        params:{topic}
+        params:topic ? {topic} : {}
     })
     return response.data.data;
 }

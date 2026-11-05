@@ -79,6 +79,22 @@ export const createLearningSessions = async (
     group.flashcardIds.push(flashcard._id.toString());
   }
 
+  // Check whether a session with the same topic and title already exists
+  for (const group of sessionGroups.values()) {
+    const duplicateSession = existingSessions.find(
+      (session) =>
+        session.title.trim().toLowerCase() ===
+        group.title.trim().toLowerCase()
+    );
+
+    if (duplicateSession) {
+      return res.status(409).json({
+        success: false,
+        message: `A session with the title "${group.title}" already exists for this topic.`
+      });
+    }
+  }
+
   // Get the last session order
   let nextOrder = existingSessions.reduce(
     (max, session) => Math.max(max, session.order),
@@ -88,69 +104,21 @@ export const createLearningSessions = async (
   // Process each title group
   for (const group of sessionGroups.values()) {
 
-    // Check whether this title already has a session
-    const existingSession = existingSessions.find(
-      (session) =>
-        session.title.trim().toLowerCase() ===
-        group.title.toLowerCase()
-    );
+    // Create a new session for a new title
+    nextOrder++;
 
-if (existingSession) {
-  // Find newly added quiz and flashcard IDs
-  const newQuizIds = group.quizIds.filter(
-    (id) => !existingSession.quizIds.includes(id)
-  );
-
-  const newFlashcardIds = group.flashcardIds.filter(
-    (id) => !existingSession.flashcardIds.includes(id)
-  );
-
-  // Add IDs without creating duplicates
-  await LearningSessionModel.updateOne(
-    { _id: existingSession._id, userId },
-    {
-      $addToSet: {
-        quizIds: { $each: group.quizIds },
-        flashcardIds: { $each: group.flashcardIds }
-      },
-      $set: {
-        quizCompleted:
-          newQuizIds.length > 0
-            ? false
-            : existingSession.quizCompleted,
-
-        flashcardCompleted:
-          newFlashcardIds.length > 0
-            ? false
-            : existingSession.flashcardCompleted,
-
-        ...(newQuizIds.length > 0 || newFlashcardIds.length > 0
-          ? { isCompleted: false }
-          : {})
-      },
-      ...(newQuizIds.length > 0 || newFlashcardIds.length > 0
-        ? { $unset: { completedAt: 1 } }
-        : {})
-    }
-  );
-}
-     else {
-      // Create a new session for a new title
-      nextOrder++;
-
-      await LearningSessionModel.create({
-        userId,
-        topic,
-        title: group.title,
-        order: nextOrder,
-        quizIds: group.quizIds,
-        flashcardIds: group.flashcardIds,
-        quizCompleted: group.quizIds.length === 0,
-        flashcardCompleted: group.flashcardIds.length === 0,
-        isUnlocked: nextOrder === 1,
-        isCompleted: false
-      });
-    }
+    await LearningSessionModel.create({
+      userId,
+      topic,
+      title: group.title,
+      order: nextOrder,
+      quizIds: group.quizIds,
+      flashcardIds: group.flashcardIds,
+      quizCompleted: group.quizIds.length === 0,
+      flashcardCompleted: group.flashcardIds.length === 0,
+      isUnlocked: nextOrder === 1,
+      isCompleted: false
+    });
   }
 
   // Fetch all sessions after updating or creating them
@@ -166,6 +134,8 @@ if (existingSession) {
   });
 };
 
+
+
 // Get Learning Sessions
 export const getLearningSession = async (
   req: Request,
@@ -176,13 +146,16 @@ export const getLearningSession = async (
   }
 
   const userId = req.userId;
-  const topic = req.query.topic as string;
+  const topic = req.query.topic as string | undefined;
+
+// Build the query based on whether a topic is provided
+    const filter = topic
+        ? { userId, topic }
+        : { userId };
+
 
   // Find sessions for this user and topic
-  const sessions = await LearningSessionModel.find({
-    userId,
-    topic
-  }).sort({ order: 1 });
+  const sessions = await LearningSessionModel.find(filter).sort({topic:1, order: 1 });
 
   return res.status(200).json({
     message: "Successfully fetched Learning Sessions",

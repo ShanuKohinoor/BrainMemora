@@ -26,10 +26,17 @@ import {
 import type { Flashcard } from "../types/flashcard.types";
 import type { MaterialType } from "../types/learningMaterial.types";
 
-type FlashcardSet = {
+// A title represents one independently revisable flashcard set.
+type FlashcardTitleSet = {
   key: string;
-  topic: string;
+  title: string;
   cards: Flashcard[];
+};
+
+// A topic contains multiple title-based flashcard sets.
+type FlashcardTopicSet = {
+  topic: string;
+  titleSets: FlashcardTitleSet[];
 };
 
 const cardColors = ["#A7C1D0", "#D9A399", "#F2D69B", "#B5CDA8"];
@@ -54,6 +61,10 @@ export default function Flashcards() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [showGenerationForm, setShowGenerationForm] = useState(false);
 
+  // Store the key of the title-based set being revised.
+  const [selectedFlashcardSet, setSelectedFlashcardSet] =
+    useState<string | null>(null);
+
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState("");
 
@@ -68,15 +79,12 @@ export default function Flashcards() {
 
   const [numberOfCards, setNumberOfCards] = useState(10);
 
-  // The selected topic determines which assessment is open.
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Load notes, learning materials and saved flashcards.
+  // Load notes, materials and saved flashcards.
   useEffect(() => {
     dispatch(fetchNotes());
     dispatch(fetchLearningMaterials());
@@ -116,7 +124,7 @@ export default function Flashcards() {
     )
   ).sort();
 
-  // Combine topics from notes and learning materials.
+  // Combine topics from notes and materials.
   const allTopics = Array.from(
     new Set([...noteTopics, ...materialTopics])
   ).sort();
@@ -132,7 +140,7 @@ export default function Flashcards() {
       validSelectedTopics.includes(material.topic?.trim() ?? "")
   );
 
-  // Get titles available for selected topics.
+  // Get available titles for selected topics.
   const materialTitles = Array.from(
     new Set(
       materialsForTopic
@@ -145,7 +153,7 @@ export default function Flashcards() {
     materialTitles.includes(title)
   );
 
-  // Determine which material types are available.
+  // Get available material types.
   const materialsForTypeOptions =
     validSelectedTitles.length > 0
       ? materialsForTopic.filter((material) =>
@@ -165,7 +173,7 @@ export default function Flashcards() {
     )
   );
 
-  // Use materials whose title and type were selected.
+  // Get materials matching the selected titles and types.
   const visibleMaterials = materialsForTopic.filter(
     (material) =>
       validSelectedTitles.includes(material.title.trim()) &&
@@ -176,35 +184,63 @@ export default function Flashcards() {
     .map((material) => material._id)
     .filter((id): id is string => Boolean(id));
 
-  // Group flashcards by topic.
-  const flashcardSets: FlashcardSet[] = [];
+  // Group flashcards first by topic and then by title.
+  const flashcardSets: FlashcardTopicSet[] = [];
 
   for (const card of flashcards) {
     if (!card.topic?.trim()) continue;
 
-    let set = flashcardSets.find(
-      (item) => item.topic === card.topic
+    const topic = card.topic.trim();
+    const title = card.title?.trim() || "General";
+
+    let topicSet = flashcardSets.find(
+      (item) => item.topic === topic
     );
 
-    if (!set) {
-      set = {
-        key: card.topic,
-        topic: card.topic,
+    if (!topicSet) {
+      topicSet = {
+        topic,
+        titleSets: [],
+      };
+
+      flashcardSets.push(topicSet);
+    }
+
+    let titleSet = topicSet.titleSets.find(
+      (item) => item.title === title
+    );
+
+    if (!titleSet) {
+      titleSet = {
+        key: JSON.stringify([topic, title]),
+        title,
         cards: [],
       };
 
-      flashcardSets.push(set);
+      topicSet.titleSets.push(titleSet);
     }
 
-    set.cards.push(card);
+    titleSet.cards.push(card);
   }
 
-  flashcardSets.sort((a, b) => a.topic.localeCompare(b.topic));
+  // Sort topics and titles alphabetically.
+  flashcardSets.sort((a, b) =>
+    a.topic.localeCompare(b.topic)
+  );
 
-  // Find the currently selected topic.
+  flashcardSets.forEach((topicSet) => {
+    topicSet.titleSets.sort((a, b) =>
+      a.title.localeCompare(b.title)
+    );
+  });
+
+  // Find only the selected title-based flashcard set.
   const activeSet =
-    flashcardSets.find((set) => set.key === selectedTopic) ?? null;
+    flashcardSets
+      .flatMap((topicSet) => topicSet.titleSets)
+      .find((set) => set.key === selectedFlashcardSet) ?? null;
 
+  // Close the generation form.
   function handleCancelGeneration() {
     if (isGenerating) return;
 
@@ -215,6 +251,7 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
+  // Select or deselect a topic.
   function handleTopicToggle(topic: string) {
     setSelectedTopics((previous) =>
       previous.includes(topic)
@@ -231,6 +268,7 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
+  // Select or deselect a title.
   function handleTitleToggle(title: string) {
     setSelectedMaterialTitles((previous) =>
       previous.includes(title)
@@ -244,6 +282,7 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
+  // Select or deselect a material type.
   function handleMaterialTypeToggle(type: MaterialType) {
     setSelectedMaterialTypes((previous) =>
       previous.includes(type)
@@ -255,6 +294,7 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
+  // Select all topics or clear the selection.
   function handleSelectAllTopics() {
     const allTopicsSelected =
       allTopics.length > 0 &&
@@ -271,6 +311,7 @@ export default function Flashcards() {
     setShowTypeOptions(false);
   }
 
+  // Select all titles or clear the selection.
   function handleSelectAllTitles() {
     const allTitlesSelected =
       materialTitles.length > 0 &&
@@ -286,6 +327,7 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
+  // Select all material types or clear the selection.
   function handleSelectAllTypes() {
     const allTypesSelected =
       availableMaterialTypes.length > 0 &&
@@ -302,16 +344,20 @@ export default function Flashcards() {
     setSuccessMessage("");
   }
 
-  // Open the topic containing the generated flashcards.
+  // Open the title set containing the generated flashcards.
   function openGeneratedSet(cards: Flashcard[]) {
     const firstCard = cards[0];
 
-    if (!firstCard) return;
+    if (!firstCard?.topic) return;
+
+    const topic = firstCard.topic.trim();
+    const title = firstCard.title?.trim() || "General";
 
     setShowGenerationForm(false);
-    setSelectedTopic(firstCard.topic);
+    setSelectedFlashcardSet(JSON.stringify([topic, title]));
   }
 
+  // Generate flashcards from selected materials or a note.
   async function handleGenerateFlashcards() {
     setErrorMessage("");
     setSuccessMessage("");
@@ -369,10 +415,16 @@ export default function Flashcards() {
           ? validSelectedTopics[0]
           : "Mixed Topics";
 
+      // Keep the generated topic and title, using fallbacks if missing.
       const cardsToAdd: Flashcard[] = generatedCards.map(
         (card: Flashcard) => ({
           ...card,
-          topic: card.topic || fallbackTopic,
+          topic: card.topic?.trim() || fallbackTopic,
+          title:
+            card.title?.trim() ||
+            (validSelectedTitles.length === 1
+              ? validSelectedTitles[0]
+              : "General"),
         })
       );
 
@@ -384,7 +436,7 @@ export default function Flashcards() {
       openGeneratedSet(cardsToAdd);
 
       setSuccessMessage(
-        `${cardsToAdd.length} flashcard(s) added to ${fallbackTopic}.`
+        `${cardsToAdd.length} flashcard(s) generated successfully.`
       );
     } catch {
       setErrorMessage("Unable to generate flashcards. Please try again.");
@@ -393,12 +445,12 @@ export default function Flashcards() {
     }
   }
 
-  // Close the assessment.
+  // Close the flashcard assessment.
   function handleCloseStudy() {
-    setSelectedTopic(null);
+    setSelectedFlashcardSet(null);
   }
 
-  // Delete a flashcard from the selected topic.
+  // Delete a flashcard.
   async function handleDeleteCard(card: Flashcard) {
     if (!card._id) {
       setErrorMessage("This flashcard has no valid ID.");
@@ -424,9 +476,11 @@ export default function Flashcards() {
       backTo="/allLearningMaterials"
     >
       <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#2D4030] sm:px-6 lg:px-8">
-        {/* Main page heading */}
+
+        {/* Main heading and Create Flashcards card */}
         <header className="mb-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+           <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2">
+            {/* Left side: Main page heading */}
             <div>
               <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
                 LEARN * REVISE * REMEMBER
@@ -441,6 +495,52 @@ export default function Flashcards() {
                 recalling what you know.
               </p>
             </div>
+
+            {/* Right side: Original Create Flashcards card */}
+            <section className="w-full mt-10 max-w-[300px] justify-self-end rounded-2xl border border-[#E6D7CA] bg-white p-4 shadow-sm">
+
+              {/* Flashcard illustration */}
+              <div className="mb-3 flex h-16 items-center justify-center">
+                <div className="relative h-16 w-20">
+
+                  <div className="absolute left-7 top-1 h-[54px] w-[42px] rotate-[12deg] rounded-lg border border-[#2D4030]/10 bg-[#B5CDA8] shadow-sm" />
+
+                  <div className="absolute left-2 top-1 h-[54px] w-[42px] -rotate-[12deg] rounded-lg border border-[#2D4030]/10 bg-[#D9A399] shadow-sm" />
+
+                  <div className="absolute left-4 top-1 flex h-[54px] w-[42px] flex-col items-center justify-center rounded-lg border border-[#2D4030]/10 bg-[#A7C1D0] shadow-md">
+                    <BookOpen size={17} strokeWidth={1.8} className="text-[#2D4030]" />
+
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1 w-5 rounded-full bg-[#2D4030]/50" />
+                      <div className="h-1 w-6 rounded-full bg-[#2D4030]/30" />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <h2 className="text-base font-bold text-[#2D4030]">
+                Create flashcards
+              </h2>
+
+              <p className="mt-1 text-xs leading-5 text-[#6B625C]">
+                Choose topics and generate cards for revision.
+              </p> 
+
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMessage("");
+                  setSuccessMessage("");
+                  setShowGenerationForm(true);
+                }}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#F27A58] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948]"
+              >
+                <Sparkles size={15} />
+                Generate Flashcards
+              </button>
+
+            </section>
           </div>
         </header>
 
@@ -464,136 +564,136 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Generation card and saved topics */}
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          {/* Generation card */}
-          <section className="rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex h-24 w-28 items-center justify-center">
-              <div className="relative h-24 w-24">
-                <div className="absolute left-8 top-1 h-[76px] w-[54px] rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#B5CDA8] shadow-sm" />
-
-                <div className="absolute left-3 top-2 h-[76px] w-[54px] -rotate-[12deg] rounded-xl border border-[#2D4030]/10 bg-[#D9A399] shadow-sm" />
-
-                <div className="absolute left-5 top-3 flex h-[76px] w-[54px] flex-col items-center justify-center rounded-xl border border-[#2D4030]/10 bg-[#A7C1D0] shadow-md">
-                  <BookOpen
-                    size={22}
-                    strokeWidth={1.8}
-                    className="text-[#2D4030]"
-                  />
-
-                  <div className="mt-3 space-y-1.5">
-                    <div className="h-1 w-6 rounded-full bg-[#2D4030]/50" />
-                    <div className="h-1 w-8 rounded-full bg-[#2D4030]/30" />
-                    <div className="h-1 w-5 rounded-full bg-[#2D4030]/30" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <h2 className="text-base font-semibold sm:text-lg">
-              Create flashcards
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-[#74675F]">
-              Choose topics and generate cards for revision.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setErrorMessage("");
-                setSuccessMessage("");
-                setShowGenerationForm(true);
-              }}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2D4030] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#405743]"
-            >
-              <Sparkles size={18} />
-              Generate Flashcards
-            </button>
-          </section>
-
-          {/* Saved flashcard topics */}
-          <section className="min-w-0">
-            <h2 className="mb-1 text-lg font-semibold sm:text-xl">
+        {/* Saved flashcards grouped by topic and title */}
+        <section className="min-w-0">
+          <div className="mb-5">
+            <h2 className="text-lg font-semibold sm:text-xl">
               Your flashcards
             </h2>
 
-            <p className="mb-5 text-sm leading-6 text-[#74675F]">
-              Open a topic to revise all its flashcards.
+            <p className="mt-1 text-sm leading-6 text-[#74675F]">
+              Choose a topic and revise each title separately.
             </p>
+          </div>
 
-            {isLoading ? (
-              <p className="rounded-xl bg-white p-5 text-sm text-[#74675F]">
-                Loading your flashcards...
+          {isLoading ? (
+            <p className="rounded-xl bg-white p-5 text-sm text-[#74675F]">
+              Loading your flashcards...
+            </p>
+          ) : flashcardSets.length === 0 ? (
+            <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
+                <BookOpen size={23} />
+              </div>
+
+              <h3 className="font-semibold">No flashcards yet</h3>
+
+              <p className="mt-2 text-sm leading-6 text-[#74675F]">
+                Generate your first flashcards to begin revising.
               </p>
-            ) : flashcardSets.length === 0 ? (
-              <div className="rounded-2xl border border-[#E6D7CA] bg-white p-6 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#D9A399]">
-                  <BookOpen size={23} />
-                </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {flashcardSets.map((topicSet, index) => {
+                const topicColor =
+                  cardColors[index % cardColors.length];
 
-                <h3 className="font-semibold">No flashcards yet</h3>
+                const totalCards = topicSet.titleSets.reduce(
+                  (total, titleSet) => total + titleSet.cards.length,
+                  0
+                );
 
-                <p className="mt-2 text-sm leading-6 text-[#74675F]">
-                  Generate your first flashcards to begin revising.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3">
-                {flashcardSets.map((set, index) => {
-                  const topicNote = notes.find(
-                    (note) => note.topic === set.topic
-                  );
-
-                  const topicColor =
-                    cardColors[index % cardColors.length];
-
-                  return (
-                    <article
-                      key={set.key}
-                      className="flex min-h-[220px] flex-col rounded-2xl border border-[#E6D7CA] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                    >
-                      <div
-                        className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: topicColor }}
-                      >
-                        <Layers size={23} />
-                      </div>
-
-                      <h3 className="text-base font-semibold sm:text-lg">
-                        {set.topic}
-                      </h3>
-
-                      <p className="mt-2 text-sm leading-5 text-[#74675F]">
-                        {topicNote?.title ?? "Your saved flashcards"}
-                      </p>
-
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-6">
-                        <span className="rounded-full bg-[#E8EDE2] px-3 py-1.5 text-xs font-semibold text-[#2D4030]">
-                          {set.cards.length}{" "}
-                          {set.cards.length === 1 ? "card" : "cards"}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTopic(set.key);
-                            setErrorMessage("");
-                            setSuccessMessage("");
-                          }}
-                          className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC]"
+                return (
+                  <section
+                    key={topicSet.topic}
+                    className="overflow-hidden rounded-2xl border border-[#E6D7CA] bg-white shadow-sm"
+                  >
+                    {/* Topic heading */}
+                    <div className="flex items-center justify-between gap-3 border-b border-[#E6D7CA] bg-[#F9F5EF] px-4 py-4 sm:px-5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: topicColor }}
                         >
-                          Revise
-                          <ArrowRight size={16} />
-                        </button>
+                          <Layers size={22} />
+                        </div>
+
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-bold sm:text-lg">
+                            {topicSet.topic}
+                          </h3>
+
+                          <p className="mt-0.5 text-xs text-[#74675F]">
+                            {topicSet.titleSets.length}{" "}
+                            {topicSet.titleSets.length === 1
+                              ? "flashcard set"
+                              : "flashcard sets"}
+                          </p>
+                        </div>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
+
+                      <span className="shrink-0 rounded-full bg-[#E8EDE2] px-3 py-1.5 text-xs font-semibold text-[#2D4030]">
+                        {totalCards} cards
+                      </span>
+                    </div>
+
+                    {/* Separate title sets inside the topic */}
+                    <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+                  {topicSet.titleSets.map((titleSet, titleIndex) => {
+                    // Select a background colour for each flashcard set.
+                    const cardColor =
+                      cardColors[titleIndex % cardColors.length];
+
+                    return (
+                      <div
+                        key={titleSet.key}
+                        className="flex flex-col gap-3 rounded-xl border border-[#E6D7CA] p-3 transition hover:border-[#A3B19B] sm:flex-row sm:items-center sm:justify-between sm:px-4"
+                        style={{ backgroundColor: cardColor }}
+                      >
+                                <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
+                              <BookOpen
+                                size={19}
+                                className="text-[#2D4030]"
+                              />
+                            </div>
+
+                            <div className="min-w-0">
+                              <h4 className="break-words text-sm font-semibold text-[#2D4030]">
+                                {titleSet.title}
+                              </h4>
+
+                              <p className="mt-1 text-xs text-[#74675F]">
+                                {titleSet.cards.length}{" "}
+                                {titleSet.cards.length === 1
+                                  ? "flashcard"
+                                  : "flashcards"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFlashcardSet(titleSet.key);
+                              setErrorMessage("");
+                              setSuccessMessage("");
+                            }}
+                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#2D4030] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#405743]"
+                          >
+                            Revise
+                            <ArrowRight size={16} />
+                          </button>
+                        </div>
+                       );
+                      })}
+                   </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Flashcard generation modal */}
         {showGenerationForm && (
@@ -611,6 +711,7 @@ export default function Flashcards() {
               aria-labelledby="generation-title"
               className="my-auto w-full max-w-2xl rounded-2xl bg-white p-4 shadow-2xl sm:p-6"
             >
+              {/* Modal heading */}
               <div className="mb-5 flex items-start justify-between gap-3">
                 <div>
                   <h2
@@ -638,6 +739,7 @@ export default function Flashcards() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
                 {/* Topic checklist */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
@@ -919,7 +1021,7 @@ export default function Flashcards() {
                 </div>
               </div>
 
-              {/* Explain when selections match no materials */}
+              {/* Show a message when no materials match */}
               {validSelectedTopics.length > 0 &&
                 validSelectedTitles.length > 0 &&
                 validSelectedMaterialTypes.length > 0 &&
@@ -959,10 +1061,10 @@ export default function Flashcards() {
           </div>
         )}
 
-        {/* Reuse the shared flashcard assessment component. */}
+        {/* Open only the selected topic and title set */}
         {activeSet && (
           <FlashcardAssessment
-            topic={activeSet.topic}
+            topic={activeSet.title}
             flashcards={activeSet.cards}
             onClose={handleCloseStudy}
             onDeleteCard={handleDeleteCard}

@@ -28,7 +28,7 @@ export function DashboardLayout({children,backLabel,backTo,onBack}:DashboardProp
         <>
          <div className="flex min-h-screen">
            <Sidebar isOpen={isSideBarOpen}/>               {/* Tell the sidebar whether to show or hide */}
-             <div className={`flex min-w-0 flex-1 flex-col bg-[#FDF3EC] ${isSideBarOpen ? "ml-50" : "ml-0"}`}>            
+             <div className={`flex min-w-0 flex-1 flex-col bg-[#FDF3EC] ${isSideBarOpen ? "ml-60" : "ml-0"}`}>            
               
               {/* Allow Navbar to open or close the sidebar */}
                <Navbar onMenuClick={handleMenuClick}  
