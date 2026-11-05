@@ -42,3 +42,13 @@ export const completeFlashcardsSession = async (id: string) => {
 
     return response.data.data;
 };
+
+
+
+// Delete learning session by ID
+export const deleteSingleSession = async(id:string)=>{
+    const response = await api.delete(
+        `/api/session/deleteSession/${id}`
+    )
+    return response.data
+}

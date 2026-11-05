@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../middlewares/verifyUser.js";
-import { createLearningSessions,getLearningSession,getOneLearningSession,completeFlashcards
+import { createLearningSessions,getLearningSession,getOneLearningSession,completeFlashcards,deleteSession
   } from "../controllers/learningSessionController.js";
 
 
@@ -17,6 +17,8 @@ router.get("/learningSession", verifyUser, getLearningSession);
 router.get("/learningSession/:id", verifyUser, getOneLearningSession);
 
 router.patch("/learningSession/:id/completeFlashcards", verifyUser,completeFlashcards);
+
+router.delete("/deleteSession/:id",verifyUser,deleteSession)
 
 
 export default router;

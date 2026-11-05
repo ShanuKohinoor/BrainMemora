@@ -8,10 +8,11 @@ import type { QuizResult } from "../types/quizResult.types";
 interface QuizAssessmentProps {
   quiz: Quiz;
   onClose: () => void;
+  onPassed: () => void;
 }
 
 
-const QuizAssessment = ({ quiz, onClose }: QuizAssessmentProps) => {
+const QuizAssessment = ({ quiz, onClose ,onPassed}: QuizAssessmentProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>(
     Array(quiz.questions.length).fill("")
@@ -44,6 +45,11 @@ const QuizAssessment = ({ quiz, onClose }: QuizAssessmentProps) => {
 
         setQuizResult(response.data);
         setPercentage(response.percentage);
+
+        // Notify the parent if the quiz is passed
+        if (response.percentage >= 80) {
+            onPassed();
+        }
 
 
     } catch (error) {

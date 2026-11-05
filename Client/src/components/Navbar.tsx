@@ -33,6 +33,7 @@ export function Navbar({onMenuClick}:NavbarProps) {       // Recieve sidebar tog
             "/quizzes": "Quiz Center",
             "/flashcards": "Flashcards",
             "/profile": "My Profile",
+            "/learningSession": "Learning Sessions"
         };
 
 const pageTitle = pageTitles[location.pathname] || "BrainMemora";

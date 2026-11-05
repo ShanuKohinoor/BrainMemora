@@ -107,6 +107,11 @@ export const createLearningSessions = async (
     // Create a new session for a new title
     nextOrder++;
 
+    console.log("CREATING SESSION:", group.title);
+console.log("QUIZ IDs:", group.quizIds);
+console.log("FLASHCARD IDs:", group.flashcardIds);
+
+
     await LearningSessionModel.create({
       userId,
       topic,
@@ -290,3 +295,36 @@ export const completeFlashcards = async (
     data: updatedSession
   });
 };
+
+
+
+
+export const deleteSession = async(
+  req:Request,
+  res: Response
+)=>{
+
+     if(!req.userId){
+      throw new UnauthorizedError("Please login first")
+     }
+
+      const userId = req.userId;
+      const id = req.params.id as string;
+       const deletedSession = await LearningSessionModel.findOneAndDelete({
+      userId,
+      _id:id
+     })
+
+     if (!deletedSession) {
+    return res.status(404).json({
+        success: false,
+        message: "Learning session not found"
+    });
+}
+    return res.status(200).json({
+      success: true,
+      message: "Learning session deleted successfully",
+      data: []
+    });
+
+}

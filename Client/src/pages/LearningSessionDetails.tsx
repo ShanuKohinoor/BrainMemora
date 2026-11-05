@@ -58,6 +58,19 @@ export default function LearningSessionDetails() {
         }
     };
 
+
+    // Refresh session data after passing a quiz
+        const handleQuizPassed = async () => {
+            if (!sessionId) return;
+
+            try {
+                const updatedData = await getOneLearningSession(sessionId);
+                setSessionData(updatedData);
+            } catch (error) {
+                console.error("Error refreshing session:", error);
+            }
+        };
+
     // Fetch the selected learning session
     useEffect(() => {
         const fetchSession = async () => {
@@ -117,12 +130,12 @@ export default function LearningSessionDetails() {
     const { session, quizzes, flashcards } = sessionData;
 
     return (
-        <DashboardLayout>
+        <DashboardLayout backLabel="Back to Learning Session" backTo="/learningSession">
             <div className="mx-auto max-w-5xl space-y-8 p-6">
 
                 {/* Session heading */}
                 <div>
-                    <button
+                    {/* <button
                         type="button"
                         onClick={() => {
                             if (showFlashcards) {
@@ -134,7 +147,7 @@ export default function LearningSessionDetails() {
                         className="mb-4 text-sm font-medium text-[#2D4030]"
                     >
                         ← Back
-                    </button>
+                    </button> */}
 
                     <h1 className="text-3xl font-bold text-[#2D4030]">
                         {session.title}
@@ -278,6 +291,8 @@ export default function LearningSessionDetails() {
                 <QuizAssessment
                     quiz={selectedQuiz}
                     onClose={() => setSelectedQuiz(null)}
+                    onPassed={handleQuizPassed}
+
                 />
                 )}
         </DashboardLayout>

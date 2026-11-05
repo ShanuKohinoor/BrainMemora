@@ -233,7 +233,7 @@ export function TopicCard({
             disabled={isEditing || isDeleting || isEditingTitle}
             className="col-span-2 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
             
-              Learning Sessions
+              Generate Sessions
         </button>
 
 
