@@ -114,28 +114,26 @@ export const createFlashcard = async (
 };
 
 
-// Generate flashcards automatically from selected PDF and image materials.
- 
-
+// Generate flashcards from selected learning materials.
 export const generateFlashcardsFromMaterials = async (
   req: Request,
   res: Response
 ) => {
-  // Check that the user is logged in.
+  // Check whether the user is logged in.
   if (!req.userId) {
     throw new UnauthorizedError("Please login first");
   }
 
   const userId = req.userId;
 
-  // Read the selected material IDs and generation settings.
+  // Get selected materials and generation settings.
   const {
     materialIds,
     numberOfCards = 10,
     difficultyLevel = "medium",
   } = req.body;
 
-  // Validate the selected material IDs.
+  // Validate material IDs.
   if (
     !Array.isArray(materialIds) ||
     materialIds.length === 0 ||
@@ -150,7 +148,7 @@ export const generateFlashcardsFromMaterials = async (
     );
   }
 
-  // Validate the requested number of flashcards.
+  // Validate the number of flashcards.
   if (
     !Number.isInteger(numberOfCards) ||
     numberOfCards < 1 ||
@@ -161,7 +159,7 @@ export const generateFlashcardsFromMaterials = async (
     );
   }
 
-  // Validate the difficulty level.
+  // Validate difficulty level.
   if (
     difficultyLevel !== "easy" &&
     difficultyLevel !== "medium" &&
@@ -172,179 +170,242 @@ export const generateFlashcardsFromMaterials = async (
     );
   }
 
-  // Find the selected materials belonging to this user.
+  // Find materials belonging to the logged-in user.
   const materials = await learningMaterialModel.find({
     _id: { $in: materialIds },
     userId,
   });
 
-  // Ensure every selected ID belongs to this user.
+  // Check whether all selected materials were found.
   if (materials.length !== new Set(materialIds).size) {
     throw new NotFoundError(
       "One or more selected learning materials were not found"
     );
   }
 
-  // Collect readable text from all selected materials.
-  const materialTexts: string[] = [];
+  // Group materials by topic and title.
+  const materialGroups = new Map<
+    string,
+    typeof materials
+  >();
 
   for (const material of materials) {
-    // Support PDFs, images, audio, and video.
-    if (
-      material.type !== "pdf" &&
-      material.type !== "image" &&
-      material.type !== "audio" &&
-      material.type !== "video"
-    ) {
-      throw new BadRequest(
-        `"${material.title}" is not a supported material type`
-      );
+    const topic = material.topic.trim();
+    const title = material.title.trim();
+
+    const groupKey = JSON.stringify([topic, title]);
+
+    if (!materialGroups.has(groupKey)) {
+      materialGroups.set(groupKey, []);
     }
 
-    // Start with previously saved extracted text.
-    let extractedText =
-      material.extractedText?.trim() ?? "";
+    materialGroups.get(groupKey)!.push(material);
+  }
 
-    // Check whether the saved text is only a PDF page marker.
-    const isPageMarker =
-      /^--\s*\d+\s+of\s+\d+\s+--$/i.test(extractedText);
+  // Store generated flashcards before saving them.
+  const flashcardsToSave: {
+    userId: string;
+    topic: string;
+    title: string;
+    sources: {
+      sourceId: string;
+      sourceType: "learningMaterial";
+    }[];
+    difficultyLevel: "easy" | "medium" | "hard";
+    question: string;
+    answer: string;
+  }[] = [];
 
-    // Extract again if the text is empty or only a page marker.
-    if (!extractedText || isPageMarker) {
-      // Check that the original file exists in S3.
-      if (!material.fileKey) {
+  // Generate flashcards for each group.
+  for (const [groupKey, groupMaterials] of materialGroups) {
+    const [topic, title] = JSON.parse(groupKey) as [
+      string,
+      string
+    ];
+
+    const materialTexts: string[] = [];
+
+    // Extract text from each material.
+    for (const material of groupMaterials) {
+      if (
+        material.type !== "pdf" &&
+        material.type !== "image" &&
+        material.type !== "audio" &&
+        material.type !== "video"
+      ) {
         throw new BadRequest(
-          `"${material.title}" has no uploaded file`
+          `"${material.title}" is not a supported material type`
         );
       }
 
-      // Download the original file from S3.
-      const fileBuffer = await downloadFileFromS3(
-        material.fileKey
-      );
+      // Use saved extracted text if available.
+      let extractedText =
+        material.extractedText?.trim() ?? "";
 
-    // Extract text using the correct method for each material type.
-    if (material.type === "pdf") {
-      extractedText = await extractPdfText(fileBuffer);
-    } else if (material.type === "image") {
-      extractedText = await extractImageText(fileBuffer);
-    } else if (
-      material.type === "audio" ||
-      material.type === "video"
-    ) {
-      extractedText = await transcribedMedia(fileBuffer);
-    }
+      const isPageMarker =
+        /^--\s*\d+\s+of\s+\d+\s+--$/i.test(extractedText);
 
-// Stop if no readable text was extracted.
-      if (!extractedText.trim()) {
-        throw new BadRequest(
-          `No readable text was found in "${material.title}"`
+      // Extract text again if needed.
+      if (!extractedText || isPageMarker) {
+        if (!material.fileKey) {
+          throw new BadRequest(
+            `"${material.title}" has no uploaded file`
+          );
+        }
+
+        // Download the file from S3.
+        const fileBuffer = await downloadFileFromS3(
+          material.fileKey
         );
+
+        // Extract text based on the material type.
+        if (material.type === "pdf") {
+          extractedText = await extractPdfText(fileBuffer);
+        } else if (material.type === "image") {
+          extractedText = await extractImageText(fileBuffer);
+        } else if (
+          material.type === "audio" ||
+          material.type === "video"
+        ) {
+          extractedText = await transcribedMedia(fileBuffer);
+        }
+
+        if (!extractedText.trim()) {
+          throw new BadRequest(
+            `No readable text was found in "${material.title}"`
+          );
+        }
+
+        // Save extracted text for future use.
+        material.extractedText = extractedText;
+        await material.save();
       }
 
-      // Save extracted text for future use.
-      material.extractedText = extractedText;
-      await material.save();
+      materialTexts.push(extractedText);
     }
 
-    // Add the extracted text for flashcard generation.
-    materialTexts.push(extractedText);
-  }
+    // Combine text from this group only.
+    const combinedText = materialTexts.join("\n\n").trim();
 
-  // Combine the text from all selected files.
-  const combinedText = materialTexts.join("\n\n").trim();
+    // Generate question and answer pairs.
+    const generatedFlashcards =
+      flashcardGenerator(combinedText);
 
-  // Generate question-and-answer pairs.
-  const generatedFlashcards =
-    flashcardGenerator(combinedText);
+    // Continue to the next group if no cards were generated.
+    if (generatedFlashcards.length === 0) {
+      continue;
+    }
 
-  // Stop if the generator could not create flashcards.
-  if (generatedFlashcards.length === 0) {
-    throw new BadRequest(
-      "No flashcards could be generated from these files. Try files containing explanatory sentences."
-    );
-  }
-
-    // Find existing flashcards for this user and topic.
+    // Find existing flashcards for this topic and title.
     const existingFlashcards = await flashcardModel.find({
       userId,
-      topic: materials[0]!.topic,
+      topic,
+      title,
     });
 
-    // Remove questions that already exist.
+    // Remove incomplete and duplicate questions.
     const uniqueFlashcards = generatedFlashcards.filter(
-      (flashcard) =>
-        !existingFlashcards.some(
+      (flashcard) => {
+        // Skip cards with missing questions or answers.
+        if (
+          !flashcard.question?.trim() ||
+          !flashcard.answer?.trim()
+        ) {
+          return false;
+        }
+
+        const question = flashcard.question
+          .trim()
+          .toLowerCase();
+
+        const alreadyExists = existingFlashcards.some(
           (existing) =>
-            existing.question.trim().toLowerCase() ===
-            flashcard.question.trim().toLowerCase()
-        )
+            existing.question.trim().toLowerCase() === question
+        );
+
+        const alreadySelected = flashcardsToSave.some(
+          (existing) =>
+            existing.topic === topic &&
+            existing.title === title &&
+            existing.question.trim().toLowerCase() === question
+        );
+
+        return !alreadyExists && !alreadySelected;
+      }
     );
 
-    // Keep only the requested number of new flashcards.
+    // Select the requested number of new flashcards.
     const selectedFlashcards = uniqueFlashcards.slice(
       0,
       numberOfCards
     );
 
-    if (selectedFlashcards.length === 0) {
-      throw new BadRequest(
-        "All generated questions already exist for this topic."
-      );
+    // Link cards to their source materials.
+    const sources = groupMaterials.map((material) => ({
+      sourceId: material._id.toString(),
+      sourceType: "learningMaterial" as const,
+    }));
+
+    // Prepare each flashcard for saving.
+    for (const flashcard of selectedFlashcards) {
+      if (
+        !flashcard.question?.trim() ||
+        !flashcard.answer?.trim()
+      ) {
+        continue;
+      }
+
+      flashcardsToSave.push({
+        userId,
+        topic,
+        title,
+        sources,
+        difficultyLevel,
+        question: flashcard.question.trim(),
+        answer: flashcard.answer.trim(),
+      });
     }
+  }
 
+  // Check whether any new flashcards were generated.
+  if (flashcardsToSave.length === 0) {
+    throw new BadRequest(
+      "No new flashcards could be generated. All generated questions may already exist."
+    );
+  }
 
-  // Link each flashcard to the selected learning materials.
-  const sources = materials.map((material) => ({
-    sourceId: material._id.toString(),
-    sourceType: "learningMaterial" as const,
-  }));
-
-  // Save the generated flashcards in MongoDB.
+  // Save all generated flashcards.
   const savedFlashcards = await flashcardModel.insertMany(
-    selectedFlashcards.map((flashcard) => ({
-      userId,
-      topic: materials[0]!.topic,
-      title: materials[0]!.title,
-      sources,
-      difficultyLevel,
-      question: flashcard.question,
-      answer: flashcard.answer,
-    }))
+    flashcardsToSave
   );
 
-  // Return the saved flashcards to the frontend.
-  return res.status(201).json({
+  res.status(201).json({
     success: true,
-    message:
-      "Flashcards generated successfully from learning materials",
+    message: "Flashcards generated successfully from learning materials",
     count: savedFlashcards.length,
     data: savedFlashcards,
   });
 };
 
 
-
-
-
-
-// Generate flashcards automatically from a selected note
+// Generate flashcards from a selected note.
 export const generateFlashcardsFromNote = async (
   req: Request,
   res: Response
 ) => {
-
-
-  // Check the user is logged in
+  // Check whether the user is logged in.
   if (!req.userId) {
     throw new UnauthorizedError("Please login first");
   }
 
-  //  Read the note id and flashcard generation settings
+  // Get the note ID and generation settings.
   const {
-    noteId, numberOfCards = 10, difficultyLevel = "medium",} = req.body;
+    noteId,
+    numberOfCards = 10,
+    difficultyLevel = "medium",
+  } = req.body;
 
-  //  Validate the note Id
+  // Validate the note ID.
   if (
     typeof noteId !== "string" ||
     !noteId.trim() ||
@@ -353,7 +414,7 @@ export const generateFlashcardsFromNote = async (
     throw new BadRequest("A valid note ID is required");
   }
 
-  //  Validate the number of cards
+  // Validate the number of flashcards.
   if (
     !Number.isInteger(numberOfCards) ||
     numberOfCards < 1 ||
@@ -364,7 +425,7 @@ export const generateFlashcardsFromNote = async (
     );
   }
 
-  //  Validate the difficulty Level
+  // Validate difficulty level.
   if (
     difficultyLevel !== "easy" &&
     difficultyLevel !== "medium" &&
@@ -377,7 +438,7 @@ export const generateFlashcardsFromNote = async (
 
   const userId = req.userId;
 
-  //  Find the note belonging to this user
+  // Find the note belonging to this user.
   const note = await noteModel.findOne({
     _id: noteId,
     userId,
@@ -387,7 +448,7 @@ export const generateFlashcardsFromNote = async (
     throw new NotFoundError("Note not found");
   }
 
-  //  Generate question and answer pairs from the note text
+  // Generate question and answer pairs.
   const generatedFlashcards = flashcardGenerator(note.content);
 
   if (generatedFlashcards.length === 0) {
@@ -396,13 +457,13 @@ export const generateFlashcardsFromNote = async (
     );
   }
 
-  //  Keep only the requested number of generated cards
+  // Select the requested number of cards.
   const selectedFlashcards = generatedFlashcards.slice(
     0,
     numberOfCards
   );
 
-  //  Link each generated flashcard to its original note
+  // Link flashcards to the original note.
   const sources = [
     {
       sourceId: note._id.toString(),
@@ -410,7 +471,7 @@ export const generateFlashcardsFromNote = async (
     },
   ];
 
-  //  Save the generated flashcards to MongoDB
+  // Save flashcards in MongoDB.
   const savedFlashcards = await flashcardModel.insertMany(
     selectedFlashcards.map((flashcard) => ({
       userId,
@@ -423,7 +484,6 @@ export const generateFlashcardsFromNote = async (
     }))
   );
 
-  //  Return the saved flashcards
   res.status(201).json({
     success: true,
     message: "Flashcards generated successfully",
@@ -433,9 +493,7 @@ export const generateFlashcardsFromNote = async (
 };
 
 
-
-
-// Get all flashcards belonging to the logged-in user
+// Get all flashcards belonging to the logged-in user.
 export const getAllFlashCards = async (
   req: Request,
   res: Response
@@ -454,6 +512,7 @@ export const getAllFlashCards = async (
     data: flashcards,
   });
 };
+
 
 // Get one flashcard.
 export const getOneFlashCard = async (
@@ -481,6 +540,7 @@ export const getOneFlashCard = async (
     data: flashcard,
   });
 };
+
 
 // Update a flashcard.
 export const updateFlashCard = async (
@@ -528,6 +588,7 @@ export const updateFlashCard = async (
     data: updatedFlashcard,
   });
 };
+
 
 // Delete a flashcard.
 export const deleteFlashCard = async (

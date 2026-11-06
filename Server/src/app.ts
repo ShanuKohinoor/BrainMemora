@@ -14,6 +14,7 @@ import flashcardRoute from "./routes/flashcardRoute.js"
 import quizRoute from "./routes/quizRoute.js"
 import quizResultRoute from "./routes/quizResultsRoute.js"
 import learningSessionRoute from "./routes/learningSessionRoute.js"
+import reward from "./routes/rewardRoute.js"
 import rateLimit from "express-rate-limit"
 
 
@@ -81,6 +82,9 @@ app.use("/api/quizResult",quizResultRoute)
 
 // Learning Session
 app.use("/api/session",learningSessionRoute)
+
+// Reward
+app.use("/api/gamification",reward)
 
 // Connect ErrorHandling Middleware
 app.use(errorHandlingMiddleware)

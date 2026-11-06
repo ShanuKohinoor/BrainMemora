@@ -735,7 +735,7 @@ export default function QuizPage() {
                         </div>
 
                         {/* Display all quizzes directly inside the topic */}
-                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5">
+                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-5">
                               {topicQuizzes.map((quiz, quizIndex) => {
                                 const quizId = quiz._id;
 
@@ -752,7 +752,7 @@ export default function QuizPage() {
                                     className="flex flex-col justify-between rounded-xl border border-[#E6D7CA] p-4 transition hover:border-[#A3B19B] hover:shadow-sm"
                                     style={{ backgroundColor: quizColor }}
                                   >
-                                      <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start justify-between gap-3">
                                   <div className="flex min-w-0 items-start gap-3">
                                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
                                       <Brain className="h-5 w-5 text-[#F27A58]" />
@@ -796,7 +796,7 @@ export default function QuizPage() {
                                       handleViewHistory(quizId)
                                     }
                                     disabled={!quizId}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC] disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D8C8BA] bg-white px-3 py-2 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC] disabled:opacity-50"
                                   >
                                     <History className="h-4 w-4" />
                                     History
@@ -808,7 +808,7 @@ export default function QuizPage() {
                                       handleStartQuiz(quizId)
                                     }
                                     disabled={!quizId}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F27A58] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#df6948] disabled:opacity-50"
                                   >
                                     Start
                                     <ArrowRight className="h-4 w-4" />
@@ -1203,6 +1203,7 @@ export default function QuizPage() {
           <QuizAssessment
             quiz={selectedQuiz}
             onClose={handleExitQuiz}
+            onPassed={() => {}}
           />
         )}
 

@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { quizModel } from "../models/quiz.js";
 import { quizResultModel } from "../models/quizResult.js";
 import { LearningSessionModel } from "../models/learningSession.js";
+import { LearningActivityModel } from "../models/learningActivity.js";
+import { recordLearningActivity } from "../services/gamificationService.js";
 import {
   BadRequest,
   NotFoundError,
@@ -77,6 +79,27 @@ export const submitQuizResult = async (
     answers,
   });
 
+  // Record a quiz activity only when the user passes
+  if (percentage >= 80) {
+    // Check whether this quiz was already recorded
+    const existingActivity = await LearningActivityModel.findOne({
+      userId,
+      activityType: "quiz",
+      activityId: quizId.toString(),
+    });
+
+    // Count this quiz only once
+    if (!existingActivity) {
+      await recordLearningActivity(
+        userId,
+        "quiz",
+        quizId.toString(),
+        true,
+        0
+      );
+    }
+  }
+
   // Check whether this quiz belongs to a Learning Session
   const session = await LearningSessionModel.findOne({
     userId,
@@ -118,10 +141,22 @@ export const submitQuizResult = async (
               quizCompleted: true,
               ...(isSessionCompleted && {
                 isCompleted: true,
+                completedAt: updatedSession.completedAt || new Date(),
               }),
             },
           }
         );
+
+        // Record the session only when it becomes completed for the first time
+        if (isSessionCompleted && !updatedSession.isCompleted) {
+          await recordLearningActivity(
+            userId,
+            "session",
+            updatedSession._id.toString(),
+            true,
+            0
+          );
+        }
 
         // Unlock the next session only when both are completed
         if (isSessionCompleted) {
@@ -164,8 +199,8 @@ export const getQuizHistory = async (
     throw new UnauthorizedError("Please login first");
   }
 
-  const quizId  = req.params.id as string;
-  const userId = req.userId ;
+  const quizId = req.params.id as string;
+  const userId = req.userId;
 
   // Check whether the quiz belongs to this user
   const quiz = await quizModel.findOne({

@@ -1,9 +1,9 @@
-
 import type { Request, Response } from "express";
 import { UnauthorizedError } from "../utils/error.js";
 import { LearningSessionModel } from "../models/learningSession.js";
 import { quizModel } from "../models/quiz.js";
 import { flashcardModel } from "../models/flashcard.js";
+import { recordLearningActivity } from "../services/gamificationService.js";
 
 // Create Learning Sessions
 export const createLearningSessions = async (
@@ -107,11 +107,6 @@ export const createLearningSessions = async (
     // Create a new session for a new title
     nextOrder++;
 
-    console.log("CREATING SESSION:", group.title);
-console.log("QUIZ IDs:", group.quizIds);
-console.log("FLASHCARD IDs:", group.flashcardIds);
-
-
     await LearningSessionModel.create({
       userId,
       topic,
@@ -153,14 +148,16 @@ export const getLearningSession = async (
   const userId = req.userId;
   const topic = req.query.topic as string | undefined;
 
-// Build the query based on whether a topic is provided
-    const filter = topic
-        ? { userId, topic }
-        : { userId };
-
+  // Build the query based on whether a topic is provided
+  const filter = topic
+    ? { userId, topic }
+    : { userId };
 
   // Find sessions for this user and topic
-  const sessions = await LearningSessionModel.find(filter).sort({topic:1, order: 1 });
+  const sessions = await LearningSessionModel.find(filter).sort({
+    topic: 1,
+    order: 1
+  });
 
   return res.status(200).json({
     message: "Successfully fetched Learning Sessions",
@@ -183,7 +180,7 @@ export const getOneLearningSession = async (
   }
 
   const userId = req.userId;
-const sessionId = req.params.id as string;
+  const sessionId = req.params.id as string;
 
   // Find the selected session
   const session = await LearningSessionModel.findOne({
@@ -258,7 +255,7 @@ export const completeFlashcards = async (
 
   // Mark flashcards as completed
   const updatedSession = await LearningSessionModel.findOneAndUpdate(
-    { _id:id, userId },
+    { _id: id, userId },
     {
       $set: {
         flashcardCompleted: true,
@@ -272,6 +269,17 @@ export const completeFlashcards = async (
     },
     { new: true }
   );
+
+  // Record the session only when it becomes completed for the first time
+  if (updatedSession?.isCompleted && !session.isCompleted) {
+    await recordLearningActivity(
+      userId,
+      "session",
+      updatedSession._id.toString(),
+      true,
+      0
+    );
+  }
 
   // Unlock the next session if both activities are completed
   if (updatedSession?.isCompleted) {
@@ -299,32 +307,33 @@ export const completeFlashcards = async (
 
 
 
-export const deleteSession = async(
-  req:Request,
+export const deleteSession = async (
+  req: Request,
   res: Response
-)=>{
+) => {
 
-     if(!req.userId){
-      throw new UnauthorizedError("Please login first")
-     }
+  if (!req.userId) {
+    throw new UnauthorizedError("Please login first");
+  }
 
-      const userId = req.userId;
-      const id = req.params.id as string;
-       const deletedSession = await LearningSessionModel.findOneAndDelete({
-      userId,
-      _id:id
-     })
+  const userId = req.userId;
+  const id = req.params.id as string;
 
-     if (!deletedSession) {
+  const deletedSession = await LearningSessionModel.findOneAndDelete({
+    userId,
+    _id: id
+  });
+
+  if (!deletedSession) {
     return res.status(404).json({
-        success: false,
-        message: "Learning session not found"
+      success: false,
+      message: "Learning session not found"
     });
-}
-    return res.status(200).json({
-      success: true,
-      message: "Learning session deleted successfully",
-      data: []
-    });
+  }
 
-}
+  return res.status(200).json({
+    success: true,
+    message: "Learning session deleted successfully",
+    data: []
+  });
+};
