@@ -88,3 +88,27 @@ export const getQuizHistory = async (
 
   return response.data.data;
 };
+
+
+
+// Delete one quiz attempt
+export const deleteQuizAttempt = async (
+  attemptId: string
+): Promise<void> => {
+  await api.delete(`/api/quizResult/history/attempt/${attemptId}`);
+};
+
+
+// Delete multiple selected quiz attempts
+export const deleteSelectedQuizAttempts = async (
+  attemptIds: string[]
+): Promise<{ deletedCount: number }> => {
+  const response = await api.delete(
+    "/api/quizResult/history/multiple",
+    {
+      data: { attemptIds },
+    }
+  );
+
+  return response.data;
+};

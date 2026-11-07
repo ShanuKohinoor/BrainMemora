@@ -1,9 +1,13 @@
+
 import type { Request, Response } from "express";
 import { quizModel } from "../models/quiz.js";
 import { quizResultModel } from "../models/quizResult.js";
 import { LearningSessionModel } from "../models/learningSession.js";
 import { LearningActivityModel } from "../models/learningActivity.js";
-import { recordLearningActivity } from "../services/gamificationService.js";
+import {
+  recordLearningActivity,
+  updateLearningStreak,
+} from "../services/gamificationService.js";
 import {
   BadRequest,
   NotFoundError,
@@ -79,25 +83,25 @@ export const submitQuizResult = async (
     answers,
   });
 
-  // Record a quiz activity only when the user passes
-  if (percentage >= 80) {
-    // Check whether this quiz was already recorded
-    const existingActivity = await LearningActivityModel.findOne({
-      userId,
-      activityType: "quiz",
-      activityId: quizId.toString(),
-    });
+  // Check whether this quiz was already recorded
+  const existingActivity = await LearningActivityModel.findOne({
+    userId,
+    activityType: "quiz",
+    activityId: quizId.toString(),
+  });
 
-    // Count this quiz only once
-    if (!existingActivity) {
-      await recordLearningActivity(
-        userId,
-        "quiz",
-        quizId.toString(),
-        true,
-        0
-      );
-    }
+  // Count this quiz only once
+  if (!existingActivity) {
+    await recordLearningActivity(
+      userId,
+      "quiz",
+      quizId.toString(),
+      true,
+      0
+    );
+  } else {
+    // Repeated quiz attempts still count towards the learning streak
+    await updateLearningStreak(userId);
   }
 
   // Check whether this quiz belongs to a Learning Session
@@ -221,5 +225,67 @@ export const getQuizHistory = async (
     success: true,
     message: "Quiz history fetched successfully",
     data: history,
+  });
+};
+
+
+
+
+
+
+
+// Delete one quiz attempt
+export const deleteQuizAttempt = async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.userId) {
+    throw new UnauthorizedError("Please login first");
+  }
+
+  const userId = req.userId;
+  const attemptId = req.params.attemptId as string;
+
+  const deletedAttempt = await quizResultModel.findOneAndDelete({
+    _id: attemptId,
+    userId,
+  });
+
+  if (!deletedAttempt) {
+    throw new NotFoundError("Quiz attempt not found");
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Quiz attempt deleted successfully",
+  });
+};
+
+
+// Delete multiple quiz attempts
+export const deleteSelectedQuizAttempts = async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.userId) {
+    throw new UnauthorizedError("Please login first");
+  }
+
+  const userId = req.userId;
+  const attemptIds = req.body.attemptIds;
+
+  if (!Array.isArray(attemptIds) || attemptIds.length === 0) {
+    throw new BadRequest("Please select at least one attempt");
+  }
+
+  const deletedAttempts = await quizResultModel.deleteMany({
+    _id: { $in: attemptIds },
+    userId,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Selected quiz attempts deleted successfully",
+    deletedCount: deletedAttempts.deletedCount,
   });
 };

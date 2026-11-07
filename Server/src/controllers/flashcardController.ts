@@ -14,104 +14,7 @@ import { downloadFileFromS3 } from "../services/storageServices.js";
 import { extractPdfText } from "../utils/pdfExtractor.js";
 import { extractImageText } from "../utils/imageTextExtractor.js";
 import { transcribedMedia } from "../utils/whisperTranscriber.js";
-
-// Create one flashcard manually.
-export const createFlashcard = async (
-  req: Request,
-  res: Response
-) => {
-  if (!req.userId) {
-    throw new UnauthorizedError("Please login first");
-  }
-
-  const {
-    topic,
-    title,
-    sources,
-    difficultyLevel,
-    question,
-    answer,
-  } = req.body;
-
-  if (
-    typeof topic !== "string" ||
-    !topic.trim() ||
-    typeof question !== "string" ||
-    !question.trim() ||
-    typeof answer !== "string" ||
-    !answer.trim()
-  ) {
-    throw new BadRequest(
-      "Topic, question, and answer are required"
-    );
-  }
-
-  if (
-    difficultyLevel !== "easy" &&
-    difficultyLevel !== "medium" &&
-    difficultyLevel !== "hard"
-  ) {
-    throw new BadRequest(
-      "Difficulty Level must be easy, medium or hard"
-    );
-  }
-
-  const userId = req.userId;
-
-  if (!Array.isArray(sources) || sources.length === 0) {
-    throw new BadRequest("At least one source is required");
-  }
-
-  for (const source of sources) {
-    if (
-      !source ||
-      typeof source.sourceId !== "string" ||
-      !mongoose.isValidObjectId(source.sourceId) ||
-      (source.sourceType !== "note" &&
-        source.sourceType !== "learningMaterial")
-    ) {
-      throw new BadRequest("Invalid source");
-    }
-
-    if (source.sourceType === "note") {
-      const note = await noteModel.findOne({
-        _id: source.sourceId,
-        userId,
-      });
-
-      if (!note) {
-        throw new NotFoundError("Note not found");
-      }
-    }
-
-    if (source.sourceType === "learningMaterial") {
-      const material = await learningMaterialModel.findOne({
-        _id: source.sourceId,
-        userId,
-      });
-
-      if (!material) {
-        throw new NotFoundError("Material not found");
-      }
-    }
-  }
-
-  const newFlashcard = await flashcardModel.create({
-    userId,
-    topic: topic.trim(),
-    title,
-    sources,
-    difficultyLevel,
-    question: question.trim(),
-    answer: answer.trim(),
-  });
-
-  res.status(201).json({
-    success: true,
-    message: "Flashcard created successfully",
-    data: newFlashcard,
-  });
-};
+import { recordLearningActivity } from "../services/gamificationService.js";
 
 
 // Generate flashcards from selected learning materials.
@@ -438,7 +341,7 @@ export const generateFlashcardsFromNote = async (
 
   const userId = req.userId;
 
-  // Find the note belonging to this user.
+  // Find the note belonging to the logged-in user.
   const note = await noteModel.findOne({
     _id: noteId,
     userId,
@@ -486,7 +389,7 @@ export const generateFlashcardsFromNote = async (
 
   res.status(201).json({
     success: true,
-    message: "Flashcards generated successfully",
+    message: "Flashcards generated successfully from notes",
     count: savedFlashcards.length,
     data: savedFlashcards,
   });
@@ -619,5 +522,64 @@ export const deleteFlashCard = async (
     success: true,
     message: "Flashcard deleted successfully",
     data: null,
+  });
+};
+
+
+// Records a completed flashcard review for rewards.
+export const completeFlashcardReview = async (
+  req: Request,
+  res: Response
+) => {
+  // Check whether the user is logged in.
+  if (!req.userId) {
+    throw new UnauthorizedError("User not authenticated");
+  }
+
+  const { topic, title } = req.body;
+
+  // Validate the topic and title.
+  if (
+    typeof topic !== "string" ||
+    typeof title !== "string" ||
+    !topic.trim() ||
+    !title.trim()
+  ) {
+    throw new BadRequest("Topic and title are required");
+  }
+
+  const normalizedTopic = topic.trim();
+  const normalizedTitle = title.trim();
+
+  // Check whether this flashcard set belongs to the user.
+  const matchingCards = await flashcardModel.findOne({
+    userId: req.userId,
+    topic: normalizedTopic,
+    title: normalizedTitle,
+  });
+
+  if (!matchingCards) {
+    throw new NotFoundError("Flashcard set not found");
+  }
+
+  // Create a unique activity ID for this topic and title.
+  const activityId = JSON.stringify([
+    normalizedTopic,
+    normalizedTitle,
+  ]);
+
+  // Record the completed flashcard review.
+  // The gamification service handles reward eligibility and streaks.
+  await recordLearningActivity(
+    req.userId,
+    "flashcard",
+    activityId,
+    true,
+    0
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Flashcard review completed successfully",
   });
 };

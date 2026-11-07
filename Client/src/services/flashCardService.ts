@@ -53,3 +53,22 @@ export const generateFlashcardsFromMaterials = async (
 
     return response.data.data;
 };
+
+
+
+
+// Record a completed flashcard review for rewards.
+export const completeFlashcardReview = async (
+    topic: string,
+    title: string
+) => {
+    const response = await api.post(
+        "/api/flashcard/completeReview",
+        {
+            topic,
+            title
+        }
+    );
+
+    return response.data;
+};

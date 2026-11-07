@@ -1,6 +1,7 @@
 
 import { LearningActivityModel } from "../models/learningActivity.js";
 import { UserModel } from "../models/user.js";
+import { RewardModel } from "../models/reward.js";
 import { NotFoundError } from "../utils/error.js";
 
 // Checks whether the user can earn reward points
@@ -10,15 +11,15 @@ export const checkRewardEligibility = async (
     activityId: string
 ): Promise<boolean> => {
 
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const rewardEligibilityDate = new Date();
+    rewardEligibilityDate.setDate(rewardEligibilityDate.getDate() - 5);
 
     const recentReward = await LearningActivityModel.findOne({
         userId,
         activityType,
         activityId,
         isRewardEligible: true,
-        activityDate: { $gte: tenDaysAgo }
+        activityDate: { $gte: rewardEligibilityDate }
     });
 
     return !recentReward;
@@ -34,31 +35,45 @@ export const recordLearningActivity = async (
     points: number
 ): Promise<void> => {
 
+    // Check whether the user can earn reward points
+    const canEarnPoints = isRewardEligible
+        ? await checkRewardEligibility(userId, activityType, activityId)
+        : false;
+
     // Save the completed activity
     const activity = await LearningActivityModel.create({
         userId,
         activityType,
         activityId,
         activityDate: new Date(),
-        isRewardEligible,
+        isRewardEligible: canEarnPoints,
         pointsAwarded: 0
     });
 
     // Calculate individual reward points
-    let totalPoints = isRewardEligible ? points : 0;
+    let totalPoints = canEarnPoints ? points : 0;
 
     // Check whether this activity reaches a milestone
-    const achievement = await calculateAchievementReward(
-        userId,
-        activityType
-    );
+    let achievement = { points: 0, achievementCount: null as number | null };
+
+    if (canEarnPoints) {
+        achievement = await calculateAchievementReward(userId, activityType);
+    }
 
     if (achievement.achievementCount !== null) {
-        // Save the milestone to prevent duplicate rewards
         activity.rewardedAchievements = [
             ...(activity.rewardedAchievements ?? []),
             achievement.achievementCount
         ];
+
+        await RewardModel.create({
+            userId,
+            achievementId: `${activityType}_${achievement.achievementCount}`,
+            title: `${achievement.achievementCount} ${activityType} milestone`,
+            description: `Completed ${achievement.achievementCount} ${activityType} activities`,
+            type: activityType === "session" ? "learningSession" : activityType,
+            points: achievement.points
+        });
 
         totalPoints += achievement.points;
     }
@@ -70,8 +85,8 @@ export const recordLearningActivity = async (
     // Add the earned points to the user's account
     await awardPoints(userId, totalPoints);
 
-    // Update the user's learning streak
-   await updateLearningStreak(userId);
+    // Update the user's learning streak for every completed activity
+    await updateLearningStreak(userId);
 };
 
 
@@ -86,6 +101,7 @@ export const updateLearningStreak = async (
         throw new NotFoundError("User not found");
     }
 
+    // Get today's date at midnight (UTC)
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -97,6 +113,7 @@ export const updateLearningStreak = async (
         lastLearningDate.setUTCHours(0, 0, 0, 0);
     }
 
+    // Calculate the current streak
     if (!lastLearningDate) {
         user.currentStreak = 1;
     } else {
@@ -117,6 +134,7 @@ export const updateLearningStreak = async (
         }
     }
 
+    // Update the best streak
     user.bestStreak = Math.max(
         user.bestStreak,
         user.currentStreak
@@ -125,6 +143,40 @@ export const updateLearningStreak = async (
     user.lastLearningDate = new Date();
 
     await user.save();
+
+    // Check whether the user has reached a streak milestone
+    const achievement = rewardMilestones.streak.find(
+        milestone => milestone.count === user.currentStreak
+    );
+
+    if (!achievement) {
+        return;
+    }
+
+    // Check whether this streak milestone was already rewarded
+    const achievementId = `streak_${achievement.count}`;
+
+    const existingReward = await RewardModel.findOne({
+        userId,
+        achievementId
+    });
+
+    if (existingReward) {
+        return;
+    }
+
+    // Save the streak reward
+    await RewardModel.create({
+        userId,
+        achievementId,
+        title: `${achievement.count}-Day Learning Streak`,
+        description: `Maintained a learning streak for ${achievement.count} days`,
+        type: "streak",
+        points: achievement.points
+    });
+
+    // Add the streak points to the user's total
+    await awardPoints(userId, achievement.points);
 };
 
 
@@ -195,18 +247,22 @@ export const rewardMilestones = {
 };
 
 
-// Counts the user's completed activities
+// Counts the user's unique completed activities
 export const getCompletedActivityCount = async (
     userId: string,
     activityType: "session" | "flashcard" | "quiz"
 ): Promise<number> => {
 
-    const completedCount = await LearningActivityModel.countDocuments({
-        userId,
-        activityType
-    });
+    const completedActivities = await LearningActivityModel.distinct(
+        "activityId",
+        {
+            userId,
+            activityType,
+            isRewardEligible: true
+        }
+    );
 
-    return completedCount;
+    return completedActivities.length;
 };
 
 

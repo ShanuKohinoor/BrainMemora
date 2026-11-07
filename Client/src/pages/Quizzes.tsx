@@ -27,6 +27,8 @@ import {
   createQuiz,
   showQuizResult,
   getQuizHistory,
+  deleteQuizAttempt,
+  deleteSelectedQuizAttempts,
 } from "../services/quizService";
 
 import type { Quiz } from "../types/quiz.types";
@@ -102,6 +104,15 @@ export default function QuizPage() {
 
   // Check whether quiz history should be displayed.
   const [showQuizHistory, setShowQuizHistory] = useState(false);
+
+  // Store the IDs of selected quiz attempts.
+  const [selectedAttemptIds, setSelectedAttemptIds] = useState<string[]>([]);
+
+  // Store the attempts selected for deletion.
+  const [attemptsToDelete, setAttemptsToDelete] = useState<string[]>([]);
+
+  // Check whether quiz attempts are being deleted.
+  const [isDeletingAttempts, setIsDeletingAttempts] = useState(false);
 
   // Check whether the user is viewing a previous quiz result.
   const [isViewingHistoryResult, setIsViewingHistoryResult] = useState(false);
@@ -306,6 +317,7 @@ export default function QuizPage() {
     setIsQuizFinished(false);
     setQuizResult(null);
     setQuizHistory([]);
+    setSelectedAttemptIds([]);
     setShowQuizHistory(false);
     setIsViewingHistoryResult(false);
   };
@@ -315,6 +327,7 @@ export default function QuizPage() {
     setShowQuizAssessment(false);
     setErrorMessage("");
     setQuizHistory([]);
+    setSelectedAttemptIds([]);
     setSelectedQuizId(quizId);
     setIsQuizFinished(false);
     setQuizResult(null);
@@ -329,6 +342,71 @@ export default function QuizPage() {
       setErrorMessage("Failed to load quiz history. Please try again.");
     } finally {
       setIsHistoryLoading(false);
+    }
+  };
+
+  // Open the confirmation dialog for one attempt.
+  const handleDeleteAttempt = (attemptId: string) => {
+    setAttemptsToDelete([attemptId]);
+  };
+
+  // Select or unselect one attempt.
+  const handleSelectAttempt = (attemptId: string) => {
+    setSelectedAttemptIds((previous) =>
+      previous.includes(attemptId)
+        ? previous.filter((id) => id !== attemptId)
+        : [...previous, attemptId]
+    );
+  };
+
+  // Select all attempts or clear the selection.
+  const handleSelectAllAttempts = () => {
+    if (selectedAttemptIds.length === quizHistory.length) {
+      setSelectedAttemptIds([]);
+    } else {
+      setSelectedAttemptIds(
+        quizHistory.map((attempt) => attempt._id)
+      );
+    }
+  };
+
+  // Open the confirmation dialog for selected attempts.
+  const handleDeleteSelectedAttempts = () => {
+    if (selectedAttemptIds.length === 0) return;
+
+    setAttemptsToDelete([...selectedAttemptIds]);
+  };
+
+  // Delete the attempts after confirmation.
+  const confirmDeleteAttempts = async () => {
+    if (attemptsToDelete.length === 0) return;
+
+    const attemptIds = [...attemptsToDelete];
+
+    setIsDeletingAttempts(true);
+    setErrorMessage("");
+
+    try {
+      if (attemptIds.length === 1) {
+        await deleteQuizAttempt(attemptIds[0]);
+      } else {
+        await deleteSelectedQuizAttempts(attemptIds);
+      }
+
+      // Remove deleted attempts from the history list.
+      setQuizHistory((previous) =>
+        previous.filter(
+          (attempt) => !attemptIds.includes(attempt._id)
+        )
+      );
+
+      // Clear the selected attempts.
+      setSelectedAttemptIds([]);
+      setAttemptsToDelete([]);
+    } catch {
+      setErrorMessage("Failed to delete quiz attempts. Please try again.");
+    } finally {
+      setIsDeletingAttempts(false);
     }
   };
 
@@ -391,6 +469,7 @@ export default function QuizPage() {
     setIsQuizFinished(false);
     setQuizResult(null);
     setQuizHistory([]);
+    setSelectedAttemptIds([]);
     setShowQuizHistory(false);
     setIsViewingHistoryResult(false);
   };
@@ -668,7 +747,6 @@ export default function QuizPage() {
                   <h2 className="text-lg font-semibold sm:text-xl">
                     Your Quiz Sets
                   </h2>
-
                 </div>
 
                 <p className="mt-1 text-sm leading-6 text-[#74675F]">
@@ -731,27 +809,26 @@ export default function QuizPage() {
                               </p>
                             </div>
                           </div>
-
                         </div>
 
                         {/* Display all quizzes directly inside the topic */}
                         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 sm:p-5">
-                              {topicQuizzes.map((quiz, quizIndex) => {
-                                const quizId = quiz._id;
+                          {topicQuizzes.map((quiz, quizIndex) => {
+                            const quizId = quiz._id;
 
-                                // Select a background colour for each quiz card.
-                                const quizColor =
-                                  cardColors[quizIndex % cardColors.length];
+                            // Select a background colour for each quiz card.
+                            const quizColor =
+                              cardColors[quizIndex % cardColors.length];
 
-                                return (
-                                  <article
-                                    key={
-                                      quizId ||
-                                      `${quiz.topic}-${quiz.title}`
-                                    }
-                                    className="flex flex-col justify-between rounded-xl border border-[#E6D7CA] p-4 transition hover:border-[#A3B19B] hover:shadow-sm"
-                                    style={{ backgroundColor: quizColor }}
-                                  >
+                            return (
+                              <article
+                                key={
+                                  quizId ||
+                                  `${quiz.topic}-${quiz.title}`
+                                }
+                                className="flex flex-col justify-between rounded-xl border border-[#E6D7CA] p-4 transition hover:border-[#A3B19B] hover:shadow-sm"
+                                style={{ backgroundColor: quizColor }}
+                              >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex min-w-0 items-start gap-3">
                                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
@@ -883,6 +960,32 @@ export default function QuizPage() {
                         </div>
                       )}
 
+                      {/* Select and delete quiz attempts */}
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                          <input
+                            type="checkbox"
+                            checked={
+                              quizHistory.length > 0 &&
+                              selectedAttemptIds.length === quizHistory.length
+                            }
+                            onChange={handleSelectAllAttempts}
+                            className="h-4 w-4 accent-[#F27A58]"
+                          />
+                          Select All
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={handleDeleteSelectedAttempts}
+                          disabled={selectedAttemptIds.length === 0}
+                          className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete Selected ({selectedAttemptIds.length})
+                        </button>
+                      </div>
+
                       {/* Display all attempts */}
                       <div className="space-y-4">
                         {quizHistory.map((attempt, index) => (
@@ -891,26 +994,55 @@ export default function QuizPage() {
                             className="rounded-xl border border-[#E9DED4] p-4 sm:p-5"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
-                                <h3 className="font-semibold">
-                                  Attempt {quizHistory.length - index}
-                                </h3>
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAttemptIds.includes(
+                                    attempt._id
+                                  )}
+                                  onChange={() =>
+                                    handleSelectAttempt(attempt._id)
+                                  }
+                                  aria-label={`Select attempt ${quizHistory.length - index}`}
+                                  className="mt-1 h-4 w-4 accent-[#F27A58]"
+                                />
 
-                                <p className="mt-1 text-sm text-[#6B7568]">
-                                  {new Date(
-                                    attempt.completedAt
-                                  ).toLocaleString()}
-                                </p>
+                                <div>
+                                  <h3 className="font-semibold">
+                                    Attempt {quizHistory.length - index}
+                                  </h3>
+
+                                  <p className="mt-1 text-sm text-[#6B7568]">
+                                    {new Date(
+                                      attempt.completedAt
+                                    ).toLocaleString()}
+                                  </p>
+                                </div>
                               </div>
 
-                              <div className="text-right">
-                                <p className="font-bold text-[#2D4030]">
-                                  {attempt.score} / {attempt.totalQuestions}
-                                </p>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <p className="font-bold text-[#2D4030]">
+                                    {attempt.score} / {attempt.totalQuestions}
+                                  </p>
 
-                                <p className="mt-1 text-sm text-[#6B7568]">
-                                  {getPercentage(attempt)}% correct
-                                </p>
+                                  <p className="mt-1 text-sm text-[#6B7568]">
+                                    {getPercentage(attempt)}% correct
+                                  </p>
+                                </div>
+
+                                {/* Delete this individual attempt */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteAttempt(attempt._id)
+                                  }
+                                  aria-label="Delete this attempt"
+                                  title="Delete attempt"
+                                  className="rounded-lg p-2 text-[#8A6F65] transition hover:bg-red-50 hover:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
                             </div>
 
@@ -1264,6 +1396,69 @@ export default function QuizPage() {
                   {deletingId === quizToDelete._id
                     ? "Deleting..."
                     : "Delete"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Delete quiz attempts confirmation dialog */}
+        {attemptsToDelete.length > 0 && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2D4030]/60 p-4">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-attempts-title"
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2
+                    id="delete-attempts-title"
+                    className="text-xl font-bold text-[#2D4030]"
+                  >
+                    Delete Quiz Attempts?
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-[#6B7568]">
+                    Are you sure you want to delete{" "}
+                    <strong>
+                      {attemptsToDelete.length === 1
+                        ? "this attempt"
+                        : `${attemptsToDelete.length} selected attempts`}
+                    </strong>
+                    ? This action cannot be undone.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAttemptsToDelete([])}
+                  disabled={isDeletingAttempts}
+                  aria-label="Close confirmation"
+                  className="rounded-lg p-2 text-[#6B7568] hover:bg-[#FDF3EC] disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAttemptsToDelete([])}
+                  disabled={isDeletingAttempts}
+                  className="rounded-lg border border-[#D8C8BA] px-4 py-2 text-sm font-semibold text-[#2D4030] hover:bg-[#FDF3EC] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmDeleteAttempts}
+                  disabled={isDeletingAttempts}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeletingAttempts ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </section>

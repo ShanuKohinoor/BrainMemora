@@ -1,7 +1,8 @@
 import { Routes,Route } from "react-router"
 import { Register } from "./pages/Register"
-// import { ProtectedRoute } from "./components/ProtectedRoute"
+import { ProtectedRoute } from "./components/ProtectedRoute"
 import  {Login}  from "./pages/Login"
+import { AuthCheck } from "./components/AuthCheck";
 import { lazy,Suspense } from "react"
 import { LandingPage } from "./pages/LandingPage"
 const Profile = lazy(()=>import("./pages/Profile"))
@@ -23,6 +24,8 @@ export default function App(){
     console.log("App component is running");
 
   return (
+    <>
+    <AuthCheck/>
     <Suspense fallback={<div>Loading....</div>}>
         <Routes>
         <Route 
@@ -31,7 +34,7 @@ export default function App(){
         />
         <Route path="/register" element={<Register/>}/>
         <Route path="/login" element={<Login/>}/>
-        {/* <Route element={<ProtectedRoute/>}> */}
+        <Route element={<ProtectedRoute/>}>
               <Route path="/dashboard" element={<Dashboard/>}/>
               <Route path="/addMaterial" element={<AddMaterial/>}/>
               <Route path="/allLearningMaterials" element={<Materials/>}/>
@@ -45,9 +48,11 @@ export default function App(){
              <Route path="/rewards" element={<Rewards/>}/>
 
 
-        {/* </Route> */}
+        </Route>
       </Routes>
 
     </Suspense>
+  </>
+
   )
 }

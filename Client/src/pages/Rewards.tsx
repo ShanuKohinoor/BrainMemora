@@ -16,26 +16,9 @@ import {
 
 import { DashboardLayout } from "../components/DashboardLayout";
 import { getRewards } from "../services/rewardService";
+import type { RewardData } from "../types/rewards.types";
 
-// Type of one earned reward
-interface Reward {
-    _id: string;
-    title: string;
-    description: string;
-    type: "quiz" | "flashcard" | "learningSession" | "streak";
-    points: number;
-    achievementId: string;
-    earnedAt: string;
-}
 
-// Data received from the backend
-interface RewardData {
-    totalPoints: number;
-    currentLevel: string;
-    currentStreak: number;
-    bestStreak: number;
-    rewards: Reward[];
-}
 
 // Level information
 const levels = [
@@ -90,6 +73,11 @@ export default function Rewards() {
         const fetchRewards = async () => {
             try {
                 const data = await getRewards();
+
+                console.log("Reward data:", data);
+                console.log("Rewards array:", data.rewards);
+
+
                 setRewardData(data);
             } catch (error) {
                 console.error("Error fetching rewards:", error);
@@ -212,13 +200,16 @@ export default function Rewards() {
 
                                     <div>
                                         <div className="flex items-center gap-2 text-white/70">
-                                            <Star size={18} />
+                                            <Star
+                                                size={18}
+                                                className="text-[#F4C66A]"
+                                            />
                                             <p className="text-sm font-medium">
                                                 Your Total Reward Points
                                             </p>
                                         </div>
 
-                                        <h2 className="mt-3 text-5xl font-bold">
+                                        <h2 className="mt-3 text-5xl font-bold text-[#F4C66A]">
                                             {totalPoints}
                                         </h2>
 
@@ -227,7 +218,7 @@ export default function Rewards() {
                                         </p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/10 bg-white/10 p-6 md:min-w-52">
+                                    <div className="rounded-2xl border border-[#F4C66A]/20 bg-[#3B5140] p-6 md:min-w-52">
                                         <div className="flex items-center gap-2 text-white/70">
                                             <Medal size={18} />
                                             <p className="text-sm">
@@ -235,7 +226,7 @@ export default function Rewards() {
                                             </p>
                                         </div>
 
-                                        <h3 className="mt-3 text-2xl font-bold text-[#F9A58C]">
+                                        <h3 className="mt-3 text-2xl font-bold text-[#F4C66A]">
                                             {rewardData.currentLevel}
                                         </h3>
 
@@ -263,7 +254,7 @@ export default function Rewards() {
 
                                     <div className="h-3 overflow-hidden rounded-full bg-white/20">
                                         <div
-                                            className="h-full rounded-full bg-[#F27A58] transition-all duration-500"
+                                            className="h-full rounded-full bg-[#F4C66A] transition-all duration-500"
                                             style={{
                                                 width: `${levelProgress}%`
                                             }}
@@ -307,7 +298,7 @@ export default function Rewards() {
                                                 </p>
 
                                                 <h3 className="mt-2 text-3xl font-bold text-[#F27A58]">
-                                                    {rewardData.currentStreak} days
+                                                    {rewardData.currentStreak} {rewardData.currentStreak === 1 ? "day" : "days"}
                                                 </h3>
                                             </div>
 
@@ -335,7 +326,7 @@ export default function Rewards() {
                                                 </p>
 
                                                 <h3 className="mt-2 text-3xl font-bold text-[#2D4030]">
-                                                    {rewardData.bestStreak} days
+                                                    {rewardData.bestStreak} {rewardData.bestStreak === 1 ? "day" : "days"}
                                                 </h3>
                                             </div>
 
@@ -463,12 +454,44 @@ export default function Rewards() {
                                             reward => reward.type === item.type
                                         );
 
+                                        const completedCount =
+                                            item.type === "learningSession"
+                                                ? rewardData.completedActivities.sessions
+                                                : item.type === "flashcard"
+                                                    ? rewardData.completedActivities.flashcards
+                                                    : item.type === "quiz"
+                                                        ? rewardData.completedActivities.quizzes
+                                                        : earnedRewards.length;
+
                                         const Icon = item.icon;
 
                                         const pointsEarned = earnedRewards.reduce(
                                             (total, reward) => total + reward.points,
                                             0
                                         );
+
+                                        const quizzesRemaining = Math.max(
+                                            0,
+                                            5 - rewardData.completedActivities.quizzes
+                                        );
+
+                                        // Flashcard milestone progress
+                                        const flashcardMilestones = [5, 10, 15];
+
+                                        const nextFlashcardMilestone = flashcardMilestones.find(
+                                            milestone => milestone > completedCount
+                                        );
+
+                                        const flashcardsRemaining = nextFlashcardMilestone
+                                            ? nextFlashcardMilestone - completedCount
+                                            : 0;
+
+                                        const flashcardProgress = nextFlashcardMilestone
+                                            ? Math.min(
+                                                (completedCount / nextFlashcardMilestone) * 100,
+                                                100
+                                            )
+                                            : 100;
 
                                         return (
                                             <div
@@ -501,7 +524,7 @@ export default function Rewards() {
 
                                                     <div>
                                                         <p className="text-2xl font-bold text-[#2D4030]">
-                                                            {earnedRewards.length}
+                                                            {completedCount}
                                                         </p>
 
                                                         <p className="text-sm text-gray-500">
@@ -514,6 +537,70 @@ export default function Rewards() {
                                                     </p>
 
                                                 </div>
+
+                                                {item.type === "flashcard" && (
+                                                    <div className="mt-5">
+
+                                                        <div className="mb-2 flex justify-between text-sm">
+                                                            <span className="text-gray-600">
+                                                                Next reward milestone
+                                                            </span>
+
+                                                            <span className="font-semibold text-[#2D4030]">
+                                                                {nextFlashcardMilestone
+                                                                    ? `${completedCount}/${nextFlashcardMilestone}`
+                                                                    : "15/15"}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                                                            <div
+                                                                className="h-full rounded-full bg-[#F27A58] transition-all duration-500"
+                                                                style={{
+                                                                    width: `${flashcardProgress}%`
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <p className="mt-2 text-sm text-gray-500">
+                                                            {flashcardsRemaining > 0
+                                                                ? `Complete ${flashcardsRemaining} more ${flashcardsRemaining === 1 ? "flashcard review" : "flashcard reviews"} to earn reward points.`
+                                                                : "All flashcard milestones achieved!"}
+                                                        </p>
+
+                                                    </div>
+                                                )}
+
+                                                {item.type === "quiz" && (
+                                                    <div className="mt-5">
+
+                                                        <div className="mb-2 flex justify-between text-sm">
+                                                            <span className="text-gray-600">
+                                                                Next reward milestone
+                                                            </span>
+
+                                                            <span className="font-semibold text-[#2D4030]">
+                                                                {Math.min(completedCount, 5)}/5
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                                                            <div
+                                                                className="h-full rounded-full bg-[#F27A58] transition-all duration-500"
+                                                                style={{
+                                                                    width: `${Math.min((completedCount / 5) * 100, 100)}%`
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <p className="mt-2 text-sm text-gray-500">
+                                                            {quizzesRemaining > 0
+                                                                ? `Complete ${quizzesRemaining} more ${quizzesRemaining === 1 ? "quiz" : "quizzes"} to earn reward points.`
+                                                                : "Quiz reward milestone achieved!"}
+                                                        </p>
+
+                                                    </div>
+                                                )}
 
                                             </div>
                                         );

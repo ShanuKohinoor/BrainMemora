@@ -8,6 +8,8 @@ type User ={
 type AuthState = {
     user: User | null;
     isLoggedIn: boolean;
+    isAuthChecking:boolean;
+
 }
 
 type LoginPayload = {
@@ -16,7 +18,7 @@ type LoginPayload = {
 const initialState : AuthState={
     user: null,
     isLoggedIn: false,
-
+    isAuthChecking:true
 }
 
 const authSlice = createSlice({
@@ -26,15 +28,20 @@ const authSlice = createSlice({
         login:(state,action: PayloadAction<LoginPayload>)=>{
             state.user=action.payload.user;
             state.isLoggedIn= true;
+            state.isAuthChecking = false;
+        },
+        setAuthChecking: (state, action: PayloadAction<boolean>) => {
+            state.isAuthChecking = action.payload;
         },
         logout:(state)=>{
             state.user = null;
             state.isLoggedIn = false;
+            state.isAuthChecking = false;
         }
     }
 
 })
 
-export const {login,logout} = authSlice.actions;
+export const {login,setAuthChecking,logout} = authSlice.actions;
 
 export default authSlice.reducer

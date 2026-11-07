@@ -93,6 +93,31 @@ export const registerUser = async(
 
 
 
+  // Get the currently logged-in user's details
+export const getCurrentUser = async (
+    req: Request,
+    res: Response<ApiResponse<{ name: string; email: string }>>
+) => {
+    // Find the user using the ID from the verified JWT
+    const existingUser = await UserModel.findById(req.userId);
+
+    // Check whether the user still exists
+    if (!existingUser) {
+        throw new UnauthorizedError("User not found. Please login again");
+    }
+
+    // Return the current user's details
+    return res.status(200).json({
+        success: true,
+        message: "User details fetched successfully",
+        data: {
+            name: existingUser.name,
+            email: existingUser.email
+        }
+    });
+};
+
+
               // Logout Controller
 
     export const logOutUser = (

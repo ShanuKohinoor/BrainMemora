@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { UnauthorizedError } from "../utils/error.js";
 import { UserModel } from "../models/user.js";
 import { RewardModel } from "../models/reward.js";
+import { LearningActivityModel } from "../models/learningActivity.js";
 
 // Get user's rewards and progress
 export const getRewards = async (
@@ -17,15 +18,30 @@ export const getRewards = async (
     const userId = req.userId;
 
     // Fetch user details and earned rewards
-    const [user, rewards] = await Promise.all([
-        UserModel.findById(userId).select(
-            "totalPoints currentLevel currentStreak bestStreak"
-        ),
+const [user, rewards, completedActivities] = await Promise.all([
+    UserModel.findById(userId).select(
+        "totalPoints currentLevel currentStreak bestStreak"
+    ),
 
-        RewardModel.find({ userId }).sort({
-            earnedAt: -1
-        })
-    ]);
+    RewardModel.find({ userId }).sort({
+        earnedAt: -1
+    }),
+
+    LearningActivityModel.aggregate([
+        {
+            $match: {
+                userId,
+                isRewardEligible: true
+            }
+        },
+        {
+            $group: {
+                _id: "$activityType",
+                count: { $sum: 1 }
+            }
+        }
+    ])
+]);
 
     if (!user) {
         return res.status(404).json({
@@ -42,7 +58,21 @@ export const getRewards = async (
             currentLevel: user.currentLevel,
             currentStreak: user.currentStreak,
             bestStreak: user.bestStreak,
-            rewards
+            rewards,
+                completedActivities: {
+        sessions: completedActivities.find(
+            activity => activity._id === "session"
+        )?.count ?? 0,
+
+        flashcards: completedActivities.find(
+            activity => activity._id === "flashcard"
+        )?.count ?? 0,
+
+        quizzes: completedActivities.find(
+            activity => activity._id === "quiz"
+        )?.count ?? 0
+    }
+
         }
     });
 };

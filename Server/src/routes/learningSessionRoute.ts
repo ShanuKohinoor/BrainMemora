@@ -18,6 +18,7 @@ router.get("/learningSession/:id", verifyUser, getOneLearningSession);
 
 router.patch("/learningSession/:id/completeFlashcards", verifyUser,completeFlashcards);
 
+// Delete a session
 router.delete("/deleteSession/:id",verifyUser,deleteSession)
 
 

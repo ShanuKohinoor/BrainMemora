@@ -21,6 +21,7 @@ import {
   deleteFlashcard,
   generateFlashcardFromNote,
   generateFlashcardsFromMaterials,
+  completeFlashcardReview
 } from "../services/flashCardService";
 
 import type { Flashcard } from "../types/flashcard.types";
@@ -450,7 +451,19 @@ export default function Flashcards() {
     setSelectedFlashcardSet(null);
   }
 
-  // Delete a flashcard.
+// Record a completed flashcard review for rewards.
+async function handleCompleteReview() {
+    if (!activeSet) return;
+
+    await completeFlashcardReview(
+        activeSet.cards[0]?.topic ?? "",
+        activeSet.title
+    );
+
+    setSuccessMessage("Flashcard review completed successfully!");
+}
+
+// Delete a flashcard.
   async function handleDeleteCard(card: Flashcard) {
     if (!card._id) {
       setErrorMessage("This flashcard has no valid ID.");
@@ -1068,6 +1081,8 @@ export default function Flashcards() {
             flashcards={activeSet.cards}
             onClose={handleCloseStudy}
             onDeleteCard={handleDeleteCard}
+                onCompleted={handleCompleteReview}
+
           />
         )}
       </main>

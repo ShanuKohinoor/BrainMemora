@@ -281,41 +281,45 @@ export default function FlashcardAssessment({
                             </div>
                         )}
 
+
                         {/* Finish Review button: Learning Sessions only */}
-                        {onCompleted && (
-                            <div className="flex shrink-0 flex-col items-center gap-3 pb-2">
-                                <p className="text-sm text-[#74675F]">
-                                    Reviewed {viewedCardIds.length} of {flashcards.length} cards
-                                </p>
+{/* Finish Review and Delete buttons */}
+<div className="flex shrink-0 flex-col items-center gap-3 pb-2">
 
-                                <button
-                                    type="button"
-                                    onClick={handleFinishReview}
-                                    disabled={!allCardsViewed || isCompletingReview || isReviewCompleted}
-                                    className="rounded-xl bg-[#2D4030] px-6 py-3 font-semibold text-white transition hover:bg-[#405743] disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                    {isCompletingReview
-                                        ? "Saving completion..."
-                                        : isReviewCompleted
-                                            ? "Completed!"
-                                            : "Finish Review"}
-                                </button>
-                            </div>
-                        )}
+    {onCompleted && (
+        <p className="text-sm text-[#74675F]">
+            Reviewed {viewedCardIds.length} of {flashcards.length} cards
+        </p>
+    )}
 
-                        {/* Delete option: used only by the normal Flashcards page */}
-                        {currentCard && onDeleteCard && (
-                            <div className="flex shrink-0 justify-center pb-1">
-                                <button
-                                    type="button"
-                                    onClick={() => onDeleteCard(currentCard)}
-                                    className="rounded-lg px-3 py-2 text-xs font-semibold text-[#9A4432] transition hover:bg-white sm:text-sm"
-                                >
-                                    Delete this card
-                                </button>
-                            </div>
-                        )}
-                    </>
+    <div className="flex items-center justify-center gap-3">
+        {onCompleted && (
+            <button
+                type="button"
+                onClick={handleFinishReview}
+                disabled={!allCardsViewed || isCompletingReview || isReviewCompleted}
+                className="rounded-xl bg-[#2D4030] px-6 py-3 font-semibold text-white transition hover:bg-[#405743] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+                {isCompletingReview
+                    ? "Saving completion..."
+                    : isReviewCompleted
+                        ? "Completed!"
+                        : "Finish Review"}
+            </button>
+        )}
+
+        {currentCard && onDeleteCard && (
+            <button
+                type="button"
+                onClick={() => onDeleteCard(currentCard)}
+                className="rounded-lg px-3 py-2 text-xs font-semibold text-[#9A4432] transition hover:bg-white sm:text-sm"
+            >
+                Delete this card
+            </button>
+        )}
+    </div>
+</div>
+            </>
                 ) : (
                     <div className="flex min-h-[220px] flex-1 flex-col items-center justify-center px-4 text-center">
                         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8EDE2]">
