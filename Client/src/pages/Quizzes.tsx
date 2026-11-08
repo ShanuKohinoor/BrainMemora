@@ -616,7 +616,8 @@ export default function QuizPage() {
       setShowTopicOptions(false);
       setShowTitleOptions(false);
       setShowTypeOptions(false);
-    } catch {
+    } catch(error) {
+        console.error("Quiz generation error:", error);
       setErrorMessage("Failed to generate the quiz. Please try again.");
     } finally {
       setIsGenerating(false);

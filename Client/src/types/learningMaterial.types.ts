@@ -4,7 +4,6 @@ export type MaterialType =
   | "video"
   | "audio"
   | "image"
-  | "article"
   | "url"
 
 // A saved learning material received from the backend

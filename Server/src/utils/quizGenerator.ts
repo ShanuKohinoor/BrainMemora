@@ -30,8 +30,7 @@ export function quizGenerator(content: string): QuizQuestion[] {
       continue;
     }
 
-    const match = sentence.match(/^(.+?)\s+(is|are)\s+(.+)$/i);
-
+   const match = sentence.match(/^(.+?)\s+(is|are|allows|stores|returns|provides|creates|keeps|contains|uses|prevents|causes)\s+(.+)$/i);
     if (!match || !match[1] || !match[2] || !match[3]) {
       continue;
     }

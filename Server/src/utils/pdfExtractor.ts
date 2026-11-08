@@ -24,7 +24,6 @@ export async function extractPdfText(pdfBuffer: Buffer):Promise<string> {
         }
 
 
-        console.log("PDF extracted text:", JSON.stringify(extractedText));
 
 
                          // Convert pdf pages(non-text) into images

@@ -1,5 +1,5 @@
 // Allowed types of learning materials
-export type MaterialType = "pdf" | "video" | "audio" | "image" |"article" | "url"
+export type MaterialType = "pdf" | "video" | "audio" | "image" | "url"
 
 
 // Complete Learning Material stored in the database
@@ -10,7 +10,7 @@ export interface LearningMaterial{
     description?: string;
     fileUrl?: string;
     fileKey?: string;
-    extractedText?: string;        // Text extracted from a PDF or audio /video transcript
+    extractedText?: string; // Text extracted from PDFs, URLs, articles, audio, and video
     externalUrl?: string;
     topic:string;
     tags?:string[];

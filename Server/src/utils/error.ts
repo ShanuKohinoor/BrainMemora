@@ -44,4 +44,11 @@
        }
 
 
-export {AppError,BadRequest,NotFoundError,UnauthorizedError,ConflictError}
+
+        class DownloadError extends AppError {
+        constructor(message: string) {
+         super(message,400);
+        }
+       }
+
+export {AppError,BadRequest,NotFoundError,UnauthorizedError,ConflictError,DownloadError}

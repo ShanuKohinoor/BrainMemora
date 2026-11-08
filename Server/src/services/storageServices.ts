@@ -1,3 +1,4 @@
+
 // AWS command used to upload a file and get an existing file from S3
 import { PutObjectCommand,GetObjectCommand,DeleteObjectCommand } from "@aws-sdk/client-s3";
 // S3 client configured for our AWS region
@@ -10,13 +11,33 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 const BUCKET_NAME = "brainmemora-learning-files-669492347903-eu-west-2-an"
 
 
+
 // Upload a file from the backend to AWS S3
      export const uploadToS3 = async(
-       file:Express.Multer.File,
+       file:Express.Multer.File | Buffer,
+       fileName?: string,
+       mimetype?: string,
        customKey?:string
      )=>{
+            // Get file data depending on its source
+    const buffer = Buffer.isBuffer(file) ? file : file.buffer;
 
-        const fileKey = customKey || file.originalname;
+    // Get filename depending on its source
+    const originalName = Buffer.isBuffer(file)
+        ? fileName
+        : file.originalname;
+
+    // Get file type depending on its source
+    const contentType = Buffer.isBuffer(file)
+        ? mimetype
+        : file.mimetype;
+
+    // Check whether filename and file type are available
+    if (!originalName || !contentType) {
+        throw new Error("Filename and file type are required");
+    }
+
+        const fileKey = customKey || originalName;
 
         const command = new PutObjectCommand({
         // Specify the S3 bucket
@@ -24,9 +45,9 @@ const BUCKET_NAME = "brainmemora-learning-files-669492347903-eu-west-2-an"
         // Name used to identify the file inside the bucket
         Key: fileKey,
         // Actual file data received from Multer
-        Body: file.buffer,
+        Body: buffer,
         // To tell S3 what type of file is being uploaded
-        ContentType: file.mimetype
+        ContentType: contentType
     })
     // Send the upload command to AWS S3
     await s3Client.send(command)

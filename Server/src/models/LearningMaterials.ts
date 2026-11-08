@@ -21,7 +21,7 @@ const learningMaterialSchema = new mongoose.Schema<LearningMaterial>({
       },
       type:{
         type:String,
-        enum: ["pdf","audio","video","image","article","url"],
+        enum: ["pdf","audio","video","image","url"],
         required:true
       },
       fileUrl:{                          // Temporary s3 url
@@ -33,7 +33,7 @@ const learningMaterialSchema = new mongoose.Schema<LearningMaterial>({
       extractedText: {                   // Store text extracted from a PDF,Url,Audio,Video,Note,Article etc
         type: String 
       },
-      externalUrl:{                    // External wesite url
+      externalUrl:{                    // External website url
         type:String
       },
       tags:{

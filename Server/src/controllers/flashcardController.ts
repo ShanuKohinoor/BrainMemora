@@ -134,7 +134,8 @@ export const generateFlashcardsFromMaterials = async (
         material.type !== "pdf" &&
         material.type !== "image" &&
         material.type !== "audio" &&
-        material.type !== "video"
+        material.type !== "video" &&
+        material.type !== "url"
       ) {
         throw new BadRequest(
           `"${material.title}" is not a supported material type`

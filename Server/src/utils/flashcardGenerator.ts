@@ -121,7 +121,40 @@ export function flashcardGenerator(content: string) {
       continue;
     }
 
-    // Rule 4: Recognize sentences containing 'has'
+
+    // Rule 4: Recognize explanatory verbs
+const actionMatch = sentence.match(
+  /^(.+?)\s+(allows|stores|returns|provides|creates|keeps|contains|prevents|causes)\s+(.+)$/i
+);
+
+if (actionMatch) {
+  const subject = actionMatch[1]?.trim();
+  const verb = actionMatch[2]?.toLowerCase();
+  const information = actionMatch[3]?.trim();
+
+  if (!subject || !verb || !information) {
+    continue;
+  }
+
+  const baseVerb = {
+    allows: "allow",
+    stores: "store",
+    returns: "return",
+    provides: "provide",
+    creates: "create",
+    keeps: "keep",
+    contains: "contain",
+    prevents: "prevent",
+    causes: "cause",
+  }[verb];
+
+  const question = `What does ${subject} ${baseVerb}?`;
+
+  addUniqueFlashcard(flashcards, question, information);
+  continue;
+}
+
+    // Rule 5: Recognize sentences containing 'has'
     const hasMatch = sentence.match(/^(.+?)\s+has\s+(.+)$/i);
 
     if (hasMatch) {
@@ -141,7 +174,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 5: Recognize sentences containing 'was'
+    // Rule 6: Recognize sentences containing 'was'
     const wasMatch = sentence.match(/^(.+?)\s+was\s+(.+)$/i);
 
     if (wasMatch) {
@@ -161,7 +194,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 6: Recognize sentences containing 'were'
+    // Rule 7: Recognize sentences containing 'were'
     const wereMatch = sentence.match(/^(.+?)\s+were\s+(.+)$/i);
 
     if (wereMatch) {
@@ -181,7 +214,7 @@ export function flashcardGenerator(content: string) {
 
 
   
-    // Rule 7: Recognize sentences containing 'will be'
+    // Rule 8: Recognize sentences containing 'will be'
     const willbeMatch = sentence.match(/^(.+?)\s+will be\s+(.+)$/i);
 
     if (willbeMatch) {
@@ -201,7 +234,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 8: Recognize sentences containing 'can'
+    // Rule 9: Recognize sentences containing 'can'
     const canMatch = sentence.match(/^(.+?)\s+can\s+(.+)$/i);
 
     if (canMatch) {
@@ -221,7 +254,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 9: Recognize sentences containing 'should'
+    // Rule 10: Recognize sentences containing 'should'
     const shouldMatch = sentence.match(/^(.+?)\s+should\s+(.+)$/i);
 
     if (shouldMatch) {
@@ -241,7 +274,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 10: Recognize sentences containing 'could'
+    // Rule 11: Recognize sentences containing 'could'
     const couldMatch = sentence.match(/^(.+?)\s+could\s+(.+)$/i);
 
     if (couldMatch) {
@@ -261,7 +294,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 11: Recognize sentences containing 'would'
+    // Rule 12: Recognize sentences containing 'would'
     const wouldMatch = sentence.match(/^(.+?)\s+would\s+(.+)$/i);
 
     if (wouldMatch) {
@@ -280,7 +313,7 @@ export function flashcardGenerator(content: string) {
     }
 
 
-    // Rule 12: Recognize sentences containing 'do'
+    // Rule 13: Recognize sentences containing 'do'
     const doMatch = sentence.match(/^(.+?)\s+do\s+(.+)$/i);
 
     if (doMatch) {
@@ -300,7 +333,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 13: Recognize sentences containing 'does'
+    // Rule 14: Recognize sentences containing 'does'
     const doesMatch = sentence.match(/^(.+?)\s+does\s+(.+)$/i);
 
     if (doesMatch) {
@@ -320,7 +353,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 14: Recognize sentences containing 'did'
+    // Rule 15: Recognize sentences containing 'did'
     const didMatch = sentence.match(/^(.+?)\s+did\s+(.+)$/i);
 
     if (didMatch) {
@@ -340,7 +373,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 15: Recognize sentences containing 'must'
+    // Rule 16: Recognize sentences containing 'must'
     const mustMatch = sentence.match(/^(.+?)\s+must\s+(.+)$/i);
 
     if (mustMatch) {
@@ -361,7 +394,7 @@ export function flashcardGenerator(content: string) {
 
 
 
-    // Rule 16: Recognize sentences containing 'may'
+    // Rule 17: Recognize sentences containing 'may'
     const mayMatch = sentence.match(/^(.+?)\s+may\s+(.+)$/i);
 
     if (mayMatch) {

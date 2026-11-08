@@ -2,11 +2,16 @@ import type { Request,Response } from "express"
 import { UnauthorizedError,NotFoundError, ConflictError, BadRequest } from "../utils/error.js"
 import type { LearningMaterial,CreateLearningMaterialBody } from "../types/learningMaterial.types.js"
 import { learningMaterialModel } from "../models/learningMaterials.js"
-import { getFileUrl, deleteFromS3,downloadFileFromS3 } from "../services/storageServices.js"
+import { getFileUrl, deleteFromS3, downloadFileFromS3, uploadToS3 } from "../services/storageServices.js";
 import type { ApiResponse } from "../types/apiResponse.types.js"
 import { extractPdfText } from "../utils/pdfExtractor.js";
 import { extractImageText } from "../utils/imageTextExtractor.js";
 import { transcribedMedia } from "../utils/whisperTranscriber.js"
+import { downloadFromUrl } from "../services/urlDownloadService.js";
+import { extractWebpageText } from "../services/webpageTextExtractor.js";
+
+
+
 
 
 //                        LEARNING MATERIALS CONTROLLER
@@ -27,14 +32,53 @@ import { transcribedMedia } from "../utils/whisperTranscriber.js"
           if(!title || !topic || !type){
             throw new BadRequest("Please enter proper fields")
           }
+
+          // Download the resource from the provided URL
+          let downloadedFile;
+
+          let extractedText: string | undefined;
+
+            if (externalUrl) {
+                downloadedFile = await downloadFromUrl(externalUrl);
+
+                if (downloadedFile.mimetype === "text/html") {
+                    const html = downloadedFile.buffer.toString("utf-8");
+
+                    extractedText = extractWebpageText(html, externalUrl);
+                }
+            }
+
+          // Upload the downloaded file to S3
+            let uploadedFileKey: string | undefined;
+
+            if (downloadedFile) {
+                uploadedFileKey = await uploadToS3(
+                    downloadedFile.buffer,
+                    downloadedFile.fileName,
+                    downloadedFile.mimetype
+                );
+            }
+
             //Get logged in users ID
           const userId = req.userId
 
           // Check whether the same user already has a material with the same title, topic and type
-          const existingLearningMaterial = await learningMaterialModel.findOne({userId,title,topic,type})
+          const existingLearningMaterial = await learningMaterialModel.findOne({
+            userId,
+            topic: { $regex: `^${topic}$`, $options: "i" },
+            title: { $regex: `^${title}$`, $options: "i" },
+            type
+          })
           if(existingLearningMaterial){
             throw new ConflictError("Material with this title already exists")
           }
+
+          // Generate a temporary URL for the uploaded S3 file
+          const uploadedFileUrl = uploadedFileKey
+              ? await getFileUrl(uploadedFileKey)
+              : fileUrl;
+
+            const finalFileKey = uploadedFileKey ?? fileKey;
 
           //Create and save new material
           const newLearningMaterial = await learningMaterialModel.create({
@@ -45,9 +89,10 @@ import { transcribedMedia } from "../utils/whisperTranscriber.js"
             // Add optional fields only if they have a value.
                // This avoids sending properties with undefined values to MongoDB.
             ...(description !== undefined && {description}),
-            ...(fileUrl !== undefined && {fileUrl}),
-            ...(fileKey !== undefined && {fileKey}),
+            ...(uploadedFileUrl !== undefined && { fileUrl: uploadedFileUrl }),
+            ...(finalFileKey !== undefined && { fileKey: finalFileKey }),
             ...(externalUrl !== undefined && {externalUrl}),
+            ...(extractedText !== undefined && { extractedText }),
             ...(tags !== undefined && {tags})
 
 
