@@ -1,6 +1,6 @@
 
-import { Card } from "../components/Card"
-import { useEffect,useState } from "react";
+import { Card } from "../components/Card";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { useNavigate } from "react-router";
 import { fetchLearningMaterials } from "../features/learningMaterials/learningMaterialSlice";
@@ -13,162 +13,161 @@ import {
 } from "../services/learningMaterialService";
 import type { MaterialType } from "../types/learningMaterial.types";
 
-export default function Materials(){    
+export default function Materials() {
 
-        const navigate = useNavigate();
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
 
-            // Background colors for topic cards.
-            const topicCardColors = [
-            "#F2D69B",
-            "#B5CDA8",
-            "#A7C1D0",
-            "#D9A399",
-            ];
+    // Background colors for topic cards.
+    const topicCardColors = [
+        "#F2D69B",
+        "#B5CDA8",
+        "#A7C1D0",
+        "#D9A399",
+    ];
 
-            // Background colors for material cards.
-            const cardColors = [
-            "#E8DFF5",
-            "#F6DFD5",
-            "#DCECE5",
-            "#DDE7F5",
-            ];
-        // Read shared search from the Redux store
-        const search = useAppSelector((state)=>state.search.search)
-        
-        const [selectedType,setSelectedType] =useState("all")                // Filter by type
-        const [selectedCategory, setSelectedCategory] = useState("all")      // Filter by category
-        const [selectedTopic,setSelectedTopic] = useState("")
+    // Background colors for material cards.
+    const cardColors = [
+        "#E8DFF5",
+        "#F6DFD5",
+        "#DCECE5",
+        "#DDE7F5",
+    ];
 
-        // Track which material is being deleted or updated.
-        const [deletingId, setDeletingId] = useState<string | null>(null);
-        const [updatingId, setUpdatingId] = useState<string | null>(null);
+    // Read shared search from the Redux store
+    const search = useAppSelector((state) => state.search.search);
 
-        // Track which topic is being edited or deleted.
-        const [editingTopic, setEditingTopic] = useState<string | null>(null);
-        const [deletingTopic, setDeletingTopic] = useState<string | null>(null);
+    const [selectedType, setSelectedType] = useState("all"); // Filter by type
+    const [selectedCategory, setSelectedCategory] = useState("all"); // Filter by category
+    const [selectedTopic, setSelectedTopic] = useState("");
 
-        const dispatch = useAppDispatch();
-        const {loading,materials,error} = useAppSelector(
-            (state)=>state.learningMaterials
-        )
+    // Track which material is being deleted or updated.
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-        useEffect(()=>{
-          dispatch(fetchLearningMaterials())
-        },[dispatch])
+    // Track which topic is being edited or deleted.
+    const [editingTopic, setEditingTopic] = useState<string | null>(null);
+    const [deletingTopic, setDeletingTopic] = useState<string | null>(null);
 
-        // Delete a material and refresh the list.
-        const handleDelete = async (id: string): Promise<void> => {
-            try {
-                setDeletingId(id);
-                await deleteMaterial(id);
-                await dispatch(fetchLearningMaterials());
-            } catch (error) {
-                console.error("Failed to delete material:", error);
-            } finally {
-                setDeletingId(null);
+    const { loading, materials, error } = useAppSelector(
+        (state) => state.learningMaterials
+    );
+
+    useEffect(() => {
+        dispatch(fetchLearningMaterials());
+    }, [dispatch]);
+
+    // Delete a material and refresh the list.
+    const handleDelete = async (id: string): Promise<void> => {
+        try {
+            setDeletingId(id);
+            await deleteMaterial(id);
+            await dispatch(fetchLearningMaterials());
+        } catch (error) {
+            console.error("Failed to delete material:", error);
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    // Update a material and refresh the list.
+    const handleUpdate = async (
+        id: string,
+        data: { title: string; topic: string; type: MaterialType }
+    ): Promise<boolean> => {
+        try {
+            setUpdatingId(id);
+            await updateMaterial(id, data);
+            await dispatch(fetchLearningMaterials());
+            return true;
+        } catch (error) {
+            console.error("Failed to update material:", error);
+            return false;
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    // Rename a topic by updating its learning materials.
+    const handleEditTopic = async (
+        oldTitle: string,
+        newTitle: string
+    ): Promise<boolean> => {
+        try {
+            setEditingTopic(oldTitle);
+
+            const topicMaterials = materials.filter(
+                (material) => material.topic === oldTitle
+            );
+
+            for (const material of topicMaterials) {
+                await updateMaterial(material._id, {
+                    title: material.title,
+                    topic: newTitle,
+                    type: material.type,
+                });
             }
-        };
 
-        // Update a material and refresh the list.
-        const handleUpdate = async (
-            id: string,
-            data: { title: string; topic: string; type: MaterialType }
-        ): Promise<boolean> => {
-            try {
-                setUpdatingId(id);
-                await updateMaterial(id, data);
-                await dispatch(fetchLearningMaterials());
-                return true;
-            } catch (error) {
-                console.error("Failed to update material:", error);
-                return false;
-            } finally {
-                setUpdatingId(null);
+            await dispatch(fetchLearningMaterials());
+            return true;
+        } catch (error) {
+            console.error("Failed to update topic:", error);
+            return false;
+        } finally {
+            setEditingTopic(null);
+        }
+    };
+
+    // Delete a topic and its associated learning materials.
+    const handleDeleteTopic = async (topic: string): Promise<void> => {
+        try {
+            setDeletingTopic(topic);
+
+            const topicMaterials = materials.filter(
+                (material) => material.topic === topic
+            );
+
+            for (const material of topicMaterials) {
+                await deleteMaterial(material._id);
             }
-        };
 
-        // Rename a topic by updating its learning materials.
-        const handleEditTopic = async (
-            oldTitle: string,
-            newTitle: string
-        ): Promise<boolean> => {
-            try {
-                setEditingTopic(oldTitle);
-
-                const topicMaterials = materials.filter(
-                    (material) => material.topic === oldTitle
-                );
-
-                for (const material of topicMaterials) {
-                    await updateMaterial(material._id, {
-                        title: material.title,
-                        topic: newTitle,
-                        type: material.type,
-                    });
-                }
-
-                await dispatch(fetchLearningMaterials());
-                return true;
-            } catch (error) {
-                console.error("Failed to update topic:", error);
-                return false;
-            } finally {
-                setEditingTopic(null);
+            if (selectedTopic === topic) {
+                setSelectedTopic("");
             }
-        };
 
-        // Delete a topic and its associated learning materials.
-        const handleDeleteTopic = async (topic: string): Promise<void> => {
-            try {
-                setDeletingTopic(topic);
-
-                const topicMaterials = materials.filter(
-                    (material) => material.topic === topic
-                );
-
-                for (const material of topicMaterials) {
-                    await deleteMaterial(material._id);
-                }
-
-                if (selectedTopic === topic) {
-                    setSelectedTopic("");
-                }
-
-                if (selectedCategory === topic) {
-                    setSelectedCategory("all");
-                }
-
-                await dispatch(fetchLearningMaterials());
-            } catch (error) {
-                console.error("Failed to delete topic:", error);
-            } finally {
-                setDeletingTopic(null);
+            if (selectedCategory === topic) {
+                setSelectedCategory("all");
             }
-        };
 
-        // Get unique topic names for topic card
-        const topics = [...new Set(materials.map((material)=>material.topic))]
+            await dispatch(fetchLearningMaterials());
+        } catch (error) {
+            console.error("Failed to delete topic:", error);
+        } finally {
+            setDeletingTopic(null);
+        }
+    };
 
-        const filteredTopics = topics.filter((topic) =>
-            topic.toLowerCase().includes(search.toLowerCase()) &&
-            (selectedType === "all" ||
-                materials.some((material) =>
-                    material.topic === topic &&
-                    material.type === selectedType
-                ))&&
-                (selectedCategory  === "all" || selectedCategory === topic)
-        )
+    // Get unique topic names for topic card
+    const topics = [...new Set(materials.map((material) => material.topic))];
 
-        const filteredMaterial = materials.filter((material)=>
-            material.title.toLowerCase().includes(search.toLowerCase()) &&
-            (selectedType === "all" || material.type === selectedType ) &&
-            (selectedTopic === "" || material.topic === selectedTopic) &&
-            (selectedCategory === "all" || material.topic === selectedCategory)
+    const filteredTopics = topics.filter((topic) =>
+        topic.toLowerCase().includes(search.toLowerCase()) &&
+        (selectedType === "all" ||
+            materials.some((material) =>
+                material.topic === topic &&
+                material.type === selectedType
+            )) &&
+        (selectedCategory === "all" || selectedCategory === topic)
+    );
 
-        )
+    const filteredMaterial = materials.filter((material) =>
+        material.title.toLowerCase().includes(search.toLowerCase()) &&
+        (selectedType === "all" || material.type === selectedType) &&
+        (selectedTopic === "" || material.topic === selectedTopic) &&
+        (selectedCategory === "all" || material.topic === selectedCategory)
+    );
 
-    return(
-       <>
+    return (
         <DashboardLayout
             backLabel={selectedTopic === "" ? "Back to Dashboard" : "Back to Library"}
             backTo="/dashboard"
@@ -178,184 +177,182 @@ export default function Materials(){
                     : () => setSelectedTopic("")
             }
         >
-      <div className="flex justify-start items-center gap-3 px-4 py-2 ml-20">
+            <div className="ml-20 flex items-center justify-start gap-3 px-4 py-2">
 
-        {/* Filter by material type */}
-          <div className="relative w-24 shrink-0 ">
-            <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-24 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
-            >
-                <option value="all" hidden>by Type</option>
-                <option value="all">All</option>
-                <option value="pdf">PDF</option>
-                <option value="audio">Audio</option>
-                <option value="video">Video</option>
-                <option value="image">Image</option>
-                <option value="article">Article</option>
-                <option value="url">URL</option>
-            </select>
+                {/* Filter by material type */}
+                <div className="relative w-24 shrink-0">
+                    <select
+                        value={selectedType}
+                        onChange={(e) => setSelectedType(e.target.value)}
+                        className="w-24 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
+                    >
+                        <option value="all" hidden>by Type</option>
+                        <option value="all">All</option>
+                        <option value="pdf">PDF</option>
+                        <option value="audio">Audio</option>
+                        <option value="video">Video</option>
+                        <option value="image">Image</option>
+                        <option value="article">Article</option>
+                        <option value="url">URL</option>
+                    </select>
+
                     {/* Dropdown arrow */}
-                <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
-                />
-         </div>
-
-        {/* Filter by category */}
-            <div className="relative w-30 shrink-0">
-                <select 
-                  value={selectedCategory}
-                  onChange={(e)=>setSelectedCategory(e.target.value)}
-                  className="w-28 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
-                >
-                    <option value="all" hidden>by Category</option>
-                    {topics.map((topic)=>(
-                        <option key={topic} value={topic}>
-                           {topic}
-                        </option>
-
-                    ))}
-                </select>
-                {/* Dropdown arrow */}
-                <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
-                />
-            </div>
-
-         </div>
-
-
-      <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#4A3028] sm:px-6 lg:px-8">
-
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <p className="mb-1 text-sm font-medium text-[#C45F43]">
-                LEARN · ORGANIZE · REMEMBER
-                </p>
-
-                <h1 className="text-3xl font-bold text-[#4A3028] sm:text-4xl">
-                My Learning Materials
-                </h1>
-            </div>
-                
-
-            </div>
-        {loading && <p>Loading....</p>}
-
-        {error && <p>{error}</p>}
-        
-        {!loading && !error && topics.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-[#E8C9B9] bg-white p-8 text-center">
-                <p className="font-semibold">No topics yet</p>
-
-                <p className="mt-2 text-sm text-[#80665C]">
-                    Add learning materials to start organizing your learning.
-                </p>
-
-                <button
-                    onClick={() => navigate("/addMaterial")}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-5 py-3 font-semibold text-white hover:bg-[#DE6848]"
-                >
-                    Add Material
-                </button>
-            </div>
-        )}
-
-
-      {selectedTopic === "" ? (
-    <>
-        {/* Show matching topic cards */}
-         <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredTopics.map((topic,index) => (
-                <TopicCard
-                    key={topic}
-                    title={topic}
-                    description={
-                        materials.find((item) => item.topic === topic)?.description
-                    }
-                    progress={0}
-                    color={topicCardColors[index % cardColors.length]}
-                    onOpenMaterials={() => setSelectedTopic(topic)}
-                    onGenerateFlashcards={() =>
-                    navigate("/flashcards", {
-                        state: { topic },
-                    })
-                    }        
-                    onGenerateQuiz={()=>
-                     navigate("/quizzes")
-                    }    
-                    onLearningSessions={() =>
-                     navigate("/learningSession", { state: { topic } })    // state:- Place to carry information to the next page
-                    }
-
-                   onEdit={(newTitle) => handleEditTopic(topic, newTitle)}
-                    onDelete={() => handleDeleteTopic(topic)}
-                    isEditing={editingTopic === topic}
-                    isDeleting={deletingTopic === topic}
-                />
-            ))}
-        </div>
-
-        {/* Show matching material titles when searching */}
-        {search.trim() !== "" && (
-            <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredMaterial.map((material,index) => (
-                    <Card
-                        key={material._id}
-                        _id={material._id}
-                        color={cardColors[index % cardColors.length]}
-                        title={material.title}
-                        topic={material.topic}
-                        description={material.description}
-                        type={material.type}
-                        fileUrl={material.fileUrl}
-                        externalUrl={material.externalUrl}
-                        onDelete={handleDelete}
-                        onUpdate={handleUpdate}
-                        isDeleting={deletingId === material._id}
-                        isUpdating={updatingId === material._id}
+                    <ChevronDown
+                        size={16}
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
                     />
-                ))}
-            </div>
-        )}
+                </div>
 
-        {/* Show a message if nothing matches */}
-        {search.trim() !== "" &&
-            filteredTopics.length === 0 &&
-            filteredMaterial.length === 0 && (
-                <p className="px-16 py-4">
-                    No topics or materials found.
-                </p>
-            )}
-    </>
-        ) : (
-        <div className="grid grid-cols-1 gap-6 px-4 py-4 md:grid-cols-2">
-                        {filteredMaterial.map((material,index) => (
-                    <Card
-                        key={material._id}
-                        _id={material._id}
-                        color={cardColors[index % cardColors.length]}
-                        title={material.title}
-                        topic={material.topic}
-                        description={material.description}
-                        type={material.type}
-                        fileUrl={material.fileUrl}
-                        externalUrl={material.externalUrl}
-                        onDelete={handleDelete}
-                        onUpdate={handleUpdate}
-                        isDeleting={deletingId === material._id}
-                        isUpdating={updatingId === material._id}
+                {/* Filter by category */}
+                <div className="relative w-30 shrink-0">
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="w-28 cursor-pointer appearance-none rounded-xl border border-[#D7C8BB] bg-[#FDF3EC] px-3 py-2 text-sm text-[#2D4030] shadow-sm outline-none focus:ring-2 focus:ring-[#A3B19B]"
+                    >
+                        <option value="all" hidden>by Category</option>
+                        {topics.map((topic) => (
+                            <option key={topic} value={topic}>
+                                {topic}
+                            </option>
+                        ))}
+                    </select>
+
+                    {/* Dropdown arrow */}
+                    <ChevronDown
+                        size={16}
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#2D4030]"
                     />
-                ))}
+                </div>
             </div>
-        )}
 
-     </main>
-    </DashboardLayout>
-       </> 
-       
-    )
+            <main className="min-h-screen bg-[#FDF3EC] px-4 py-6 text-[#4A3028] sm:px-6 lg:px-8">
+
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p className="mb-1 text-sm font-medium text-[#C45F43]">
+                            LEARN · ORGANIZE · REMEMBER
+                        </p>
+
+                        <h1 className="text-3xl font-bold text-[#4A3028] sm:text-4xl">
+                            My Learning Materials
+                        </h1>
+                    </div>
+                </div>
+
+                {loading && <p>Loading....</p>}
+                {error && <p>{error}</p>}
+
+                {!loading && !error && topics.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-[#E8C9B9] bg-white p-8 text-center">
+                        <p className="font-semibold">No topics yet</p>
+
+                        <p className="mt-2 text-sm text-[#80665C]">
+                            Add learning materials to start organizing your learning.
+                        </p>
+
+                        <button
+                            onClick={() => navigate("/addMaterial")}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#F27A58] px-5 py-3 font-semibold text-white hover:bg-[#DE6848]"
+                        >
+                            Add Material
+                        </button>
+                    </div>
+                )}
+
+                {selectedTopic === "" ? (
+                    <>
+                        {/* Show matching topic cards */}
+                        <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {filteredTopics.map((topic, index) => (
+                                <TopicCard
+                                    key={topic}
+                                    title={topic}
+                                    description={
+                                        materials.find((item) => item.topic === topic)?.description
+                                    }
+                                    progress={0}
+                                    color={topicCardColors[index % topicCardColors.length]}
+                                    onOpenMaterials={() => setSelectedTopic(topic)}
+                                    onLearningSessions={() =>
+                                        navigate("/learningSession", { state: { topic } }) // state:- Place to carry information to the next page
+                                    }
+                                    onEdit={(newTitle) => handleEditTopic(topic, newTitle)}
+                                    onDelete={() => handleDeleteTopic(topic)}
+                                    isEditing={editingTopic === topic}
+                                    isDeleting={deletingTopic === topic}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Show matching material titles when searching */}
+                        {search.trim() !== "" && (
+                            <div className="grid grid-cols-1 gap-6 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {filteredMaterial.map((material, index) => (
+                                    <Card
+                                        key={material._id}
+                                        _id={material._id}
+                                        color={cardColors[index % cardColors.length]}
+                                        title={material.title}
+                                        topic={material.topic}
+                                        description={material.description}
+                                        type={material.type}
+                                        fileUrl={material.fileUrl}
+                                        externalUrl={material.externalUrl}
+                                        hasExtractedText={Boolean(material.extractedText?.trim())}
+                                        onGenerateQuiz={() =>
+                                            navigate("/quizzes", { state: { materialId: material._id } })
+                                        }
+                                        onGenerateFlashcards={() =>
+                                            navigate("/flashcards", { state: { materialId: material._id } })
+                                        }
+                                        onDelete={handleDelete}
+                                        onUpdate={handleUpdate}
+                                        isDeleting={deletingId === material._id}
+                                        isUpdating={updatingId === material._id}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Show a message if nothing matches */}
+                        {search.trim() !== "" &&
+                            filteredTopics.length === 0 &&
+                            filteredMaterial.length === 0 && (
+                                <p className="px-16 py-4">
+                                    No topics or materials found.
+                                </p>
+                            )}
+                    </>
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 px-4 py-4 md:grid-cols-2">
+                        {filteredMaterial.map((material, index) => (
+                            <Card
+                                key={material._id}
+                                _id={material._id}
+                                color={cardColors[index % cardColors.length]}
+                                title={material.title}
+                                topic={material.topic}
+                                description={material.description}
+                                type={material.type}
+                                fileUrl={material.fileUrl}
+                                externalUrl={material.externalUrl}
+                                hasExtractedText={Boolean(material.extractedText?.trim())}
+                                onGenerateQuiz={() =>
+                                    navigate("/quizzes", { state: { materialId: material._id } })
+                                }
+                                onGenerateFlashcards={() =>
+                                    navigate("/flashcards", { state: { materialId: material._id } })
+                                }
+                                onDelete={handleDelete}
+                                onUpdate={handleUpdate}
+                                isDeleting={deletingId === material._id}
+                                isUpdating={updatingId === material._id}
+                            />
+                        ))}
+                    </div>
+                )}
+            </main>
+        </DashboardLayout>
+    );
 }

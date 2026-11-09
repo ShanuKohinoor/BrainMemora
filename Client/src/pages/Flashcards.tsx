@@ -1,5 +1,6 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import {
   BookOpen,
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from "lucide-react";
 
 import FlashcardAssessment from "../components/FlashcardAssessment";
@@ -21,7 +23,7 @@ import {
   deleteFlashcard,
   generateFlashcardFromNote,
   generateFlashcardsFromMaterials,
-  completeFlashcardReview
+  completeFlashcardReview,
 } from "../services/flashCardService";
 
 import type { Flashcard } from "../types/flashcard.types";
@@ -47,12 +49,15 @@ const materialTypes: { value: MaterialType; label: string }[] = [
   { value: "video", label: "Video" },
   { value: "url", label: "URL" },
   { value: "audio", label: "Audio" },
-  { value: "article", label: "Article" },
   { value: "image", label: "Image" },
 ];
 
 export default function Flashcards() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const handledMaterialId = useRef<string | null>(null);
+
+  const materialId = location.state?.materialId;
 
   const notes = useAppSelector((state) => state.notes.notes);
   const materials = useAppSelector(
@@ -60,6 +65,8 @@ export default function Flashcards() {
   );
 
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [materialFlashcards, setMaterialFlashcards] =
+    useState<Flashcard[] | null>(null);
   const [showGenerationForm, setShowGenerationForm] = useState(false);
 
   // Store the key of the title-based set being revised.
@@ -85,6 +92,12 @@ export default function Flashcards() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Store the flashcard set waiting for delete confirmation.
+  const [pendingDeleteSet, setPendingDeleteSet] =
+    useState<FlashcardTitleSet | null>(null);
+
+  const [isDeletingSet, setIsDeletingSet] = useState(false);
+
   // Load notes, materials and saved flashcards.
   useEffect(() => {
     dispatch(fetchNotes());
@@ -98,7 +111,7 @@ export default function Flashcards() {
         const savedCards = await getAllFlashcards();
         setFlashcards((savedCards ?? []) as Flashcard[]);
       } catch {
-        setErrorMessage("Unable to load flashcards. Please try again.");
+        setErrorMessage("Unable to load your flashcards. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -106,6 +119,78 @@ export default function Flashcards() {
 
     void loadFlashcards();
   }, [dispatch]);
+
+  // Generate or open flashcards for one selected learning material.
+  useEffect(() => {
+    if (
+      !materialId ||
+      isLoading ||
+      handledMaterialId.current === materialId
+    ) {
+      return;
+    }
+
+    const selectedMaterial = materials.find(
+      (material) => material._id === materialId
+    );
+
+    if (!selectedMaterial) return;
+
+    handledMaterialId.current = materialId;
+
+    async function openMaterialFlashcards() {
+      try {
+        setIsGenerating(true);
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        const existingCards = flashcards.filter((card) =>
+          card.sources?.some(
+            (source) =>
+              source.sourceId === materialId &&
+              source.sourceType === "learningMaterial"
+          )
+        );
+
+        if (existingCards.length > 0) {
+          setMaterialFlashcards(existingCards);
+          return;
+        }
+
+        const generatedCards = await generateFlashcardsFromMaterials(
+          [materialId],
+          numberOfCards,
+          "medium"
+        );
+
+        if (!generatedCards?.length) {
+          setErrorMessage(
+            "No flashcards could be generated from this material."
+          );
+          return;
+        }
+
+        setFlashcards((previousCards) => [
+          ...generatedCards,
+          ...previousCards,
+        ]);
+
+        setMaterialFlashcards(generatedCards);
+
+        setSuccessMessage(
+          `${generatedCards.length} flashcard(s) generated successfully.`
+        );
+      } catch {
+        setErrorMessage(
+          "Unable to generate flashcards from this material. Please try again."
+        );
+      } finally {
+        setIsGenerating(false);
+      }
+    }
+
+    void openMaterialFlashcards();
+  }, [materialId, isLoading, materials, flashcards, numberOfCards]);
 
   // Get unique topics from notes.
   const noteTopics = Array.from(
@@ -354,6 +439,7 @@ export default function Flashcards() {
     const topic = firstCard.topic.trim();
     const title = firstCard.title?.trim() || "General";
 
+    setMaterialFlashcards(null);
     setShowGenerationForm(false);
     setSelectedFlashcardSet(JSON.stringify([topic, title]));
   }
@@ -449,21 +535,24 @@ export default function Flashcards() {
   // Close the flashcard assessment.
   function handleCloseStudy() {
     setSelectedFlashcardSet(null);
+    setMaterialFlashcards(null);
   }
 
-// Record a completed flashcard review for rewards.
-async function handleCompleteReview() {
-    if (!activeSet) return;
+  // Record a completed flashcard review for rewards.
+  async function handleCompleteReview() {
+    const cardsToReview = materialFlashcards ?? activeSet?.cards;
+
+    if (!cardsToReview?.length) return;
 
     await completeFlashcardReview(
-        activeSet.cards[0]?.topic ?? "",
-        activeSet.title
+      cardsToReview[0]?.topic ?? "",
+      cardsToReview[0]?.title ?? "General"
     );
 
     setSuccessMessage("Flashcard review completed successfully!");
-}
+  }
 
-// Delete a flashcard.
+  // Delete a single flashcard from the assessment.
   async function handleDeleteCard(card: Flashcard) {
     if (!card._id) {
       setErrorMessage("This flashcard has no valid ID.");
@@ -478,8 +567,86 @@ async function handleCompleteReview() {
       setFlashcards((previousCards) =>
         previousCards.filter((item) => item._id !== card._id)
       );
+
+      setMaterialFlashcards((previousCards) =>
+        previousCards
+          ? previousCards.filter((item) => item._id !== card._id)
+          : null
+      );
     } catch {
       setErrorMessage("Unable to delete the flashcard. Please try again.");
+    }
+  }
+
+  // Open the delete confirmation modal.
+  function handleDeleteSet(titleSet: FlashcardTitleSet) {
+    setPendingDeleteSet(titleSet);
+  }
+
+  // Cancel deletion and close the modal.
+  function handleCancelDelete() {
+    if (isDeletingSet) return;
+
+    setPendingDeleteSet(null);
+  }
+
+  // Delete the set only after confirmation.
+  async function handleConfirmDelete() {
+    if (!pendingDeleteSet) return;
+
+    try {
+      setIsDeletingSet(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const titleSet = pendingDeleteSet;
+      const cardIds = titleSet.cards.map((card) => card._id);
+
+      if (cardIds.some((id) => !id)) {
+        setErrorMessage(
+          "Some flashcards have no valid ID. Unable to delete this set."
+        );
+        return;
+      }
+
+      // Delete all cards in the selected set.
+      await Promise.all(
+        cardIds.map((id) => deleteFlashcard(id!))
+      );
+
+      // Update saved flashcards.
+      setFlashcards((previousCards) =>
+        previousCards.filter(
+          (card) => !cardIds.includes(card._id)
+        )
+      );
+
+      // Update currently displayed flashcards.
+      setMaterialFlashcards((previousCards) =>
+        previousCards
+          ? previousCards.filter(
+              (card) => !cardIds.includes(card._id)
+            )
+          : null
+      );
+
+      // Close the assessment if this set was open.
+      if (selectedFlashcardSet === titleSet.key) {
+        setSelectedFlashcardSet(null);
+        setMaterialFlashcards(null);
+      }
+
+      setPendingDeleteSet(null);
+
+      setSuccessMessage(
+        `"${titleSet.title}" and its ${titleSet.cards.length} flashcards were deleted successfully.`
+      );
+    } catch {
+      setErrorMessage(
+        "Unable to delete the complete flashcard set. Please try again."
+      );
+    } finally {
+      setIsDeletingSet(false);
     }
   }
 
@@ -492,7 +659,7 @@ async function handleCompleteReview() {
 
         {/* Main heading and Create Flashcards card */}
         <header className="mb-8">
-           <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2">
             {/* Left side: Main page heading */}
             <div>
               <p className="text-xs font-semibold tracking-[0.18em] text-[#71806D]">
@@ -509,13 +676,11 @@ async function handleCompleteReview() {
               </p>
             </div>
 
-            {/* Right side: Original Create Flashcards card */}
-            <section className="w-full mt-10 max-w-[300px] justify-self-end rounded-2xl border border-[#E6D7CA] bg-white p-4 shadow-sm">
+            {/* Right side: Create Flashcards card */}
+            <section className="mt-10 w-full max-w-[300px] justify-self-end rounded-2xl border border-[#E6D7CA] bg-white p-4 shadow-sm">
 
-              {/* Flashcard illustration */}
               <div className="mb-3 flex h-16 items-center justify-center">
                 <div className="relative h-16 w-20">
-
                   <div className="absolute left-7 top-1 h-[54px] w-[42px] rotate-[12deg] rounded-lg border border-[#2D4030]/10 bg-[#B5CDA8] shadow-sm" />
 
                   <div className="absolute left-2 top-1 h-[54px] w-[42px] -rotate-[12deg] rounded-lg border border-[#2D4030]/10 bg-[#D9A399] shadow-sm" />
@@ -528,7 +693,6 @@ async function handleCompleteReview() {
                       <div className="h-1 w-6 rounded-full bg-[#2D4030]/30" />
                     </div>
                   </div>
-
                 </div>
               </div>
 
@@ -538,7 +702,7 @@ async function handleCompleteReview() {
 
               <p className="mt-1 text-xs leading-5 text-[#6B625C]">
                 Choose topics and generate cards for revision.
-              </p> 
+              </p>
 
               <button
                 type="button"
@@ -552,7 +716,6 @@ async function handleCompleteReview() {
                 <Sparkles size={15} />
                 Generate Flashcards
               </button>
-
             </section>
           </div>
         </header>
@@ -651,56 +814,69 @@ async function handleCompleteReview() {
                     </div>
 
                     {/* Separate title sets inside the topic */}
-                    <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
-                  {topicSet.titleSets.map((titleSet, titleIndex) => {
-                    // Select a background colour for each flashcard set.
-                    const cardColor =
-                      cardColors[titleIndex % cardColors.length];
+                    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+                      {topicSet.titleSets.map((titleSet, titleIndex) => {
+                        const cardColor =
+                          cardColors[titleIndex % cardColors.length];
 
-                    return (
-                      <div
-                        key={titleSet.key}
-                        className="flex flex-col gap-3 rounded-xl border border-[#E6D7CA] p-3 transition hover:border-[#A3B19B] sm:flex-row sm:items-center sm:justify-between sm:px-4"
-                        style={{ backgroundColor: cardColor }}
-                      >
-                                <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
-                              <BookOpen
-                                size={19}
-                                className="text-[#2D4030]"
-                              />
-                            </div>
-
-                            <div className="min-w-0">
-                              <h4 className="break-words text-sm font-semibold text-[#2D4030]">
-                                {titleSet.title}
-                              </h4>
-
-                              <p className="mt-1 text-xs text-[#74675F]">
-                                {titleSet.cards.length}{" "}
-                                {titleSet.cards.length === 1
-                                  ? "flashcard"
-                                  : "flashcards"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedFlashcardSet(titleSet.key);
-                              setErrorMessage("");
-                              setSuccessMessage("");
-                            }}
-                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#2D4030] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#405743]"
+                        return (
+                          <article
+                            key={titleSet.key}
+                            className="flex flex-col justify-between rounded-xl border border-[#E6D7CA] p-4 transition hover:border-[#A3B19B] hover:shadow-sm"
+                            style={{ backgroundColor: cardColor }}
                           >
-                            Revise
-                            <ArrowRight size={16} />
-                          </button>
-                        </div>
-                       );
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FDF3EC]">
+                                <BookOpen
+                                  size={19}
+                                  className="text-[#2D4030]"
+                                />
+                              </div>
+
+                              <div className="min-w-0">
+                                <h4 className="break-words text-sm font-semibold text-[#2D4030]">
+                                  {titleSet.title}
+                                </h4>
+
+                                <p className="mt-1 text-xs text-[#74675F]">
+                                  {titleSet.cards.length}{" "}
+                                  {titleSet.cards.length === 1
+                                    ? "flashcard"
+                                    : "flashcards"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Revise and Delete buttons */}
+                            <div className="mt-4 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMaterialFlashcards(null);
+                                  setSelectedFlashcardSet(titleSet.key);
+                                  setErrorMessage("");
+                                  setSuccessMessage("");
+                                }}
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#405743]"
+                              >
+                                Revise
+                                <ArrowRight size={16} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSet(titleSet)}
+                                aria-label={`Delete ${titleSet.title} flashcard set`}
+                                title="Delete flashcard set"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-red-600 transition hover:bg-red-50"
+                              >
+                                <Trash2 size={17} />
+                              </button>
+                            </div>
+                          </article>
+                        );
                       })}
-                   </div>
+                    </div>
                   </section>
                 );
               })}
@@ -752,7 +928,6 @@ async function handleCompleteReview() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
                 {/* Topic checklist */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold">
@@ -1074,16 +1249,77 @@ async function handleCompleteReview() {
           </div>
         )}
 
-        {/* Open only the selected topic and title set */}
-        {activeSet && (
-          <FlashcardAssessment
-            topic={activeSet.title}
-            flashcards={activeSet.cards}
-            onClose={handleCloseStudy}
-            onDeleteCard={handleDeleteCard}
-                onCompleted={handleCompleteReview}
+        {/* Delete confirmation modal */}
+        {pendingDeleteSet && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2D4030]/60 p-4">
+            <section
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-title"
+              aria-describedby="delete-description"
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            >
+              <h2
+                id="delete-title"
+                className="text-lg font-bold text-[#2D4030]"
+              >
+                Delete flashcard set?
+              </h2>
 
-          />
+              <p
+                id="delete-description"
+                className="mt-2 text-sm leading-6 text-[#74675F]"
+              >
+                Are you sure you want to delete{" "}
+                <strong>{pendingDeleteSet.title}</strong> and all{" "}
+                <strong>{pendingDeleteSet.cards.length} flashcards</strong>{" "}
+                in this set? This action cannot be undone.
+              </p>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  disabled={isDeletingSet}
+                  className="rounded-lg border border-[#D7C8BB] px-4 py-2.5 text-sm font-semibold text-[#2D4030] transition hover:bg-[#FDF3EC] disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeletingSet}
+                  className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeletingSet ? "Deleting..." : "Confirm Delete"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Open only the selected topic and title set */}
+        {materialFlashcards !== null ? (
+          materialFlashcards.length > 0 && (
+            <FlashcardAssessment
+              topic={materialFlashcards[0]?.title ?? "Flashcards"}
+              flashcards={materialFlashcards}
+              onClose={handleCloseStudy}
+              onDeleteCard={handleDeleteCard}
+              onCompleted={handleCompleteReview}
+            />
+          )
+        ) : (
+          activeSet && (
+            <FlashcardAssessment
+              topic={activeSet.title}
+              flashcards={activeSet.cards}
+              onClose={handleCloseStudy}
+              onDeleteCard={handleDeleteCard}
+              onCompleted={handleCompleteReview}
+            />
+          )
         )}
       </main>
     </DashboardLayout>

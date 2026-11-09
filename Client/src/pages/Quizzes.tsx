@@ -1,5 +1,4 @@
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Brain,
   Plus,
@@ -19,7 +18,7 @@ import {
 
 import QuizAssessment from "../components/QuizAssessment";
 import { DashboardLayout } from "../components/DashboardLayout";
-
+import { useLocation, useNavigate } from "react-router";
 import {
   getAllQuizzes,
   deleteQuiz,
@@ -58,6 +57,7 @@ type MaterialForQuiz = {
   topic: string;
   title: string;
   type: MaterialType;
+  extractedText?: string;
 };
 
 const cardColors = ["#A7C1D0", "#D9A399", "#F2D69B", "#B5CDA8"];
@@ -65,11 +65,20 @@ const cardColors = ["#A7C1D0", "#D9A399", "#F2D69B", "#B5CDA8"];
 // Display the Quiz Center page.
 export default function QuizPage() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Prevent the same material from being processed more than once.
+  const handledMaterialId = useRef<string | null>(null);
 
   // Get learning materials from Redux.
   const materials = useAppSelector(
     (state) => state.learningMaterials.materials
   ) as MaterialForQuiz[];
+
+  const isMaterialsLoading = useAppSelector(
+    (state) => state.learningMaterials.loading
+  );
 
   // Store saved quizzes and loading states.
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -321,6 +330,109 @@ export default function QuizPage() {
     setShowQuizHistory(false);
     setIsViewingHistoryResult(false);
   };
+
+  // Open an existing quiz or generate a new quiz for one material.
+  useEffect(() => {
+    const materialId = (
+      location.state as { materialId?: string } | null
+    )?.materialId;
+
+    if (!materialId || handledMaterialId.current === materialId) {
+      return;
+    }
+
+    // Wait until saved quizzes and learning materials are loaded.
+    if (isLoading || isMaterialsLoading) {
+      return;
+    }
+
+    // Mark this material as handled to prevent duplicate generation.
+    handledMaterialId.current = materialId;
+
+    // Clear the navigation state so it is not processed again.
+    navigate(location.pathname, {
+      replace: true,
+      state: null,
+    });
+
+    const openOrGenerateQuiz = async () => {
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      // Check whether a quiz already exists only for this material.
+      const existingQuiz = quizzes.find(
+        (quiz) =>
+          quiz.sources.length === 1 &&
+          quiz.sources[0].sourceType === "learningMaterial" &&
+          quiz.sources[0].sourceId === materialId
+      );
+
+      // Open the existing quiz if one is found.
+      if (existingQuiz) {
+        handleStartQuiz(existingQuiz._id);
+        return;
+      }
+
+      // Find the selected learning material.
+      const material = materials.find(
+        (item) => (item._id || item.id) === materialId
+      );
+
+      // Check whether the material contains extracted text.
+      if (!material || !material.extractedText?.trim()) {
+        setErrorMessage(
+          "This material does not contain text for quiz generation."
+        );
+        return;
+      }
+
+      setIsGenerating(true);
+
+      try {
+        // Generate five questions from this material.
+        const questions = await generateQuizQuestions([materialId], 5);
+
+        if (!questions || questions.length === 0) {
+          setErrorMessage("No questions were generated. Please try again.");
+          return;
+        }
+
+        // Save the generated quiz and link it to this material.
+        const savedQuiz = await createQuiz({
+          topic: material.topic,
+          title: material.title,
+          sources: [
+            {
+              sourceType: "learningMaterial",
+              sourceId: materialId,
+            },
+          ],
+          questions,
+        });
+
+        // Add the saved quiz to the quiz list.
+        setQuizzes((current) => [savedQuiz, ...current]);
+
+        // Open the newly generated quiz.
+        handleStartQuiz(savedQuiz._id);
+      } catch (error) {
+        console.error("Individual quiz generation error:", error);
+        setErrorMessage("Failed to generate the quiz. Please try again.");
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    openOrGenerateQuiz();
+  }, [
+    location.state,
+    location.pathname,
+    navigate,
+    isLoading,
+    isMaterialsLoading,
+    quizzes,
+    materials,
+  ]);
 
   // Load all attempts for the selected quiz.
   const handleViewHistory = async (quizId: string) => {
@@ -616,8 +728,8 @@ export default function QuizPage() {
       setShowTopicOptions(false);
       setShowTitleOptions(false);
       setShowTypeOptions(false);
-    } catch(error) {
-        console.error("Quiz generation error:", error);
+    } catch (error) {
+      console.error("Quiz generation error:", error);
       setErrorMessage("Failed to generate the quiz. Please try again.");
     } finally {
       setIsGenerating(false);

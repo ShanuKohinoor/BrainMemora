@@ -15,12 +15,8 @@ export async function extractPdfText(pdfBuffer: Buffer):Promise<string> {
         const extractedText = result.text.trim()
 
     // Check whether the result contains only a page marker.
-        const isPageMarker =
-        /^--\s*\d+\s+of\s+\d+\s*--$/i.test(extractedText);
-
-        // Return the text if it contains actual content.
-        if (extractedText && !isPageMarker) {
-        return extractedText;
+        if (extractedText.replace(/--.*?--/g, "").trim()) {
+            return extractedText;
         }
 
 

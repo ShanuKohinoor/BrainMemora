@@ -8,8 +8,6 @@ interface TopicCardProps {
   progress: number;
   color: string;                 // Background color for topic card
   onOpenMaterials: () => void;
-  onGenerateFlashcards:()=>void;
-  onGenerateQuiz:()=>void;
   onLearningSessions:()=>void;
   onEdit: (newTitle: string) => Promise<boolean>;
   onDelete: () => Promise<void> | void;
@@ -23,8 +21,8 @@ export function TopicCard({
   progress,
   color,
   onOpenMaterials,
-  onGenerateFlashcards,
-  onGenerateQuiz,
+  // onGenerateFlashcards,
+  // onGenerateQuiz,
   onLearningSessions,
   onEdit,
   onDelete,
@@ -213,7 +211,7 @@ export function TopicCard({
           Open Materials
         </button>
 
-        <button
+        {/* <button
           type="button"
           onClick={onGenerateFlashcards}
           disabled={isEditing || isDeleting || isEditingTitle}
@@ -226,7 +224,7 @@ export function TopicCard({
           disabled={isEditing || isDeleting || isEditingTitle}
           className="flex-1 rounded-lg bg-[#B85F45] px-2 py-2 text-center text-xs font-medium text-white hover:bg-[#984A35] disabled:opacity-50"        >
           Take Quiz
-        </button>
+        </button> */}
         <button
             type="button"
             onClick={onLearningSessions}

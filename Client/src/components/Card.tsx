@@ -12,6 +12,9 @@ interface CardProps {
   type?: MaterialType;
   fileUrl?: string;
   externalUrl?: string;
+  hasExtractedText: boolean;
+  onGenerateFlashcards: () => void;
+  onGenerateQuiz: () => void;
   onDelete: (id: string) => Promise<void>;
   onUpdate: (
     id: string,
@@ -30,6 +33,9 @@ export function Card({
   type,
   fileUrl,
   externalUrl,
+  hasExtractedText,
+  onGenerateFlashcards,
+  onGenerateQuiz,
   onDelete,
   onUpdate,
   isDeleting,
@@ -53,7 +59,7 @@ export function Card({
     const success = await onUpdate(_id, {
       title: newTitle.trim(),
       topic: newTopic.trim(),
-      type: type ?? "article",
+      type: type ?? "url",
     });
 
     if (success) {
@@ -76,8 +82,10 @@ export function Card({
   };
 
   return (
-    <div className="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-[#E8DED3] bg-[#FDF3EC] p-5 shadow-sm transition-shadow hover:shadow-md"
-      style={{backgroundColor:color}}>
+    <div
+      className="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-[#E8DED3] bg-[#FDF3EC] p-5 shadow-sm transition-shadow hover:shadow-md"
+      style={{ backgroundColor: color }}
+    >
       {isEditing ? (
         <div className="flex flex-1 flex-col">
           <h3 className="mb-4 text-lg font-semibold text-[#2D4030]">
@@ -214,7 +222,7 @@ export function Card({
               />
             )}
 
-            {(type === "article" || type === "url") && externalUrl && (
+            {type === "url" && externalUrl && (
               <a
                 href={externalUrl}
                 target="_blank"
@@ -224,6 +232,28 @@ export function Card({
                 Read Article
               </a>
             )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onGenerateQuiz}
+                disabled={!hasExtractedText}
+                title={!hasExtractedText ? "No extracted text available" : "Generate quiz"}
+                className="rounded-lg bg-[#2D4030] px-4 py-2 text-sm font-medium text-white hover:bg-[#405943] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Generate Quiz
+              </button>
+
+              <button
+                type="button"
+                onClick={onGenerateFlashcards}
+                disabled={!hasExtractedText}
+                title={!hasExtractedText ? "No extracted text available" : "Generate flashcards"}
+                className="rounded-lg border border-[#2D4030] px-4 py-2 text-sm font-medium text-[#2D4030] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Generate Flashcards
+              </button>
+            </div>
           </div>
         </>
       )}

@@ -16,6 +16,7 @@ export interface LearningMaterial {
   fileUrl?: string;
   fileKey?: string;
   externalUrl?: string;
+  extractedText?: string;
   topic: string;
   tags?: string[];
   isPinned: boolean;

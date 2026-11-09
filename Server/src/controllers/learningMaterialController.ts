@@ -13,6 +13,22 @@ import { extractWebpageText } from "../services/webpageTextExtractor.js";
 
 
 
+// Check whether the URL belongs to YouTube
+const isYouTubeUrl = (url: string): boolean => {
+    try {
+        const parsedUrl = new URL(url);
+
+        return [
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+            "youtu.be"
+        ].includes(parsedUrl.hostname);
+    } catch {
+        return false;
+    }
+};
+
 
 //                        LEARNING MATERIALS CONTROLLER
 
@@ -37,14 +53,16 @@ import { extractWebpageText } from "../services/webpageTextExtractor.js";
           let downloadedFile;
 
           let extractedText: string | undefined;
-
-            if (externalUrl) {
+           // Download and extract text from normal URLs, but skip YouTube links
+            if (externalUrl && !isYouTubeUrl(externalUrl)) {
                 downloadedFile = await downloadFromUrl(externalUrl);
 
                 if (downloadedFile.mimetype === "text/html") {
                     const html = downloadedFile.buffer.toString("utf-8");
 
                     extractedText = extractWebpageText(html, externalUrl);
+                } else if (downloadedFile.mimetype === "application/pdf") {
+                   extractedText = await extractPdfText(downloadedFile.buffer);
                 }
             }
 
@@ -62,17 +80,30 @@ import { extractWebpageText } from "../services/webpageTextExtractor.js";
             //Get logged in users ID
           const userId = req.userId
 
-          // Check whether the same user already has a material with the same title, topic and type
-          const existingLearningMaterial = await learningMaterialModel.findOne({
-            userId,
-            topic: { $regex: `^${topic}$`, $options: "i" },
-            title: { $regex: `^${title}$`, $options: "i" },
-            type
-          })
-          if(existingLearningMaterial){
-            throw new ConflictError("Material with this title already exists")
-          }
 
+            // Check whether the same URL already exists
+            if (externalUrl) {
+              const existingMaterial = await learningMaterialModel.findOne({
+                userId,
+                externalUrl
+              });
+
+              if (existingMaterial) {
+                throw new ConflictError("This URL has already been added");
+              }
+            }
+
+            // Check whether the same uploaded file already exists
+            if (fileKey) {
+              const existingMaterial = await learningMaterialModel.findOne({
+                userId,
+                fileKey
+              });
+
+              if (existingMaterial) {
+                throw new ConflictError("This file has already been added");
+              }
+            }
           // Generate a temporary URL for the uploaded S3 file
           const uploadedFileUrl = uploadedFileKey
               ? await getFileUrl(uploadedFileKey)
