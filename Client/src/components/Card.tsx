@@ -47,6 +47,10 @@ export function Card({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [formError, setFormError] = useState("");
 
+  const isYoutubeVideo =
+    externalUrl?.includes("youtube.com") ||
+    externalUrl?.includes("youtu.be");
+
   // Save the material without asking for confirmation.
   const handleSave = async () => {
     if (!newTitle.trim() || !newTopic.trim()) {
@@ -190,16 +194,34 @@ export function Card({
             </p>
           )}
 
-          <div className="mt-auto pt-2">
-            {type === "pdf" && fileUrl && (
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex rounded-lg bg-[#2D4030] px-4 py-2 text-sm font-medium text-white hover:bg-[#405943]"
-              >
-                Open PDF
-              </a>
+          <div className="mt-auto flex flex-col gap-4 pt-4">
+
+            {/* Material access button or preview */}
+            {((type === "pdf" && fileUrl) ||
+              (type === "url" && externalUrl)) && (
+              <div>
+                {type === "pdf" && fileUrl && (
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#A3B19B] px-4 py-2 text-sm font-medium text-[#2D4030] transition-colors hover:bg-[#8F9F87]"
+                  >
+                    Open PDF
+                  </a>
+                )}
+
+                {type === "url" && externalUrl && (
+                  <a
+                    href={externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#A3B19B] px-4 py-2 text-sm font-medium text-[#2D4030] transition-colors hover:bg-[#8F9F87]"
+                  >
+                    {isYoutubeVideo ? "Watch Video" : "Read Article"}
+                  </a>
+                )}
+              </div>
             )}
 
             {type === "video" && fileUrl && (
@@ -222,24 +244,21 @@ export function Card({
               />
             )}
 
-            {type === "url" && externalUrl && (
-              <a
-                href={externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex rounded-lg bg-[#2D4030] px-4 py-2 text-sm font-medium text-white hover:bg-[#405943]"
-              >
-                Read Article
-              </a>
+            {!hasExtractedText && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                {isYoutubeVideo
+                  ? "English transcript unavailable. You can watch the video."
+                  : "Text extraction unavailable. Quiz and flashcard generation is disabled."}
+              </p>
             )}
-
-            <div className="mt-4 flex flex-wrap gap-2">
+            {/* Study action buttons */}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={onGenerateQuiz}
                 disabled={!hasExtractedText}
                 title={!hasExtractedText ? "No extracted text available" : "Generate quiz"}
-                className="rounded-lg bg-[#2D4030] px-4 py-2 text-sm font-medium text-white hover:bg-[#405943] disabled:cursor-not-allowed disabled:opacity-40"
+                className="min-h-11 w-full rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[#405943] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Generate Quiz
               </button>
@@ -249,7 +268,7 @@ export function Card({
                 onClick={onGenerateFlashcards}
                 disabled={!hasExtractedText}
                 title={!hasExtractedText ? "No extracted text available" : "Generate flashcards"}
-                className="rounded-lg border border-[#2D4030] px-4 py-2 text-sm font-medium text-[#2D4030] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="min-h-11 w-full rounded-lg bg-[#2D4030] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[#405943] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Generate Flashcards
               </button>

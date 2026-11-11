@@ -9,6 +9,7 @@ import { extractImageText } from "../utils/imageTextExtractor.js";
 import { transcribedMedia } from "../utils/whisperTranscriber.js"
 import { downloadFromUrl } from "../services/urlDownloadService.js";
 import { extractWebpageText } from "../services/webpageTextExtractor.js";
+import { getYouTubeTranscript } from "../services/youtubeTranscriptService.js";
 
 
 
@@ -53,8 +54,16 @@ const isYouTubeUrl = (url: string): boolean => {
           let downloadedFile;
 
           let extractedText: string | undefined;
+
+          // Get the transcript from YouTube videos
+            if (externalUrl && isYouTubeUrl(externalUrl)) {
+                extractedText = await getYouTubeTranscript(externalUrl);
+            }
+
+
            // Download and extract text from normal URLs, but skip YouTube links
             if (externalUrl && !isYouTubeUrl(externalUrl)) {
+              
                 downloadedFile = await downloadFromUrl(externalUrl);
 
                 if (downloadedFile.mimetype === "text/html") {
