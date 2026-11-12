@@ -23,7 +23,7 @@ const navigationItems = [
     {label:"Flashcards",path:"/flashcards",icon:Layers},
     {label: "Quiz Center", path: "/quizzes",icon:FileQuestion },
     {label: "Learning Session", path: "/learningSession",icon:GraduationCap },
-    {label: "AI Assistant", path: "/ai-assistant",icon:Bot },
+    {label: "AI Brain Studio", path: "/aiAssistant",icon:Bot },
     {label: "Rewards", path: "/rewards",icon:Trophy },
     {label: "Settings", path: "/settings",icon:Settings }
 ]
