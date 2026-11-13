@@ -16,6 +16,7 @@ import quizResultRoute from "./routes/quizResultsRoute.js"
 import learningSessionRoute from "./routes/learningSessionRoute.js"
 import reward from "./routes/rewardRoute.js"
 import aiRoute from "./routes/aiRoutes.js"
+import studyRoomRouter from "./routes/studyRoom.js"
 import rateLimit from "express-rate-limit"
 
 
@@ -89,6 +90,10 @@ app.use("/api/gamification",reward)
 
 // AI Generation
 app.use("/api/generate",aiRoute)
+
+
+// Study room
+app.use("/api/groupStudy",studyRoomRouter)
 
 // Connect ErrorHandling Middleware
 app.use(errorHandlingMiddleware)
