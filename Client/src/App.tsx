@@ -16,7 +16,7 @@ const LearningSessionDetails = lazy(()=>import("./pages/LearningSessionDetails")
 const Rewards = lazy(()=>import("./pages/Rewards"))
 const AIBrainStudio =lazy(()=>import("./pages/AIBrainStudio"))
 const AddMaterial = lazy(()=>import("./pages/AddMaterial"))
-
+const StudyRoomPage = lazy(()=>import("./pages/StudyRoomPage"))
 
 
 export default function App(){
@@ -43,6 +43,7 @@ export default function App(){
               <Route path="/quizzes" element={<Quizzes/>}/>
               <Route path="/learningSession" element={<LearningSessions/>}/>
               <Route path="/learningSessionDetails/:sessionId" element={<LearningSessionDetails/>}/>
+              <Route path="/studyRoomPage" element={<StudyRoomPage/>}/>
              <Route path="/aiAssistant" element={<AIBrainStudio/>}/> 
              <Route path="/rewards" element={<Rewards/>}/>
 

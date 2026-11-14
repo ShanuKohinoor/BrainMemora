@@ -4,6 +4,11 @@ import {
     createStudyRoom,
     getMyStudyRooms,
     getOneStudyRoom,
+    shareLearningMaterial,
+    shareQuiz,
+    shareFlashcards,
+    shareLearningSession,
+    getSharedMaterials,
     updateStudyRoom,
     joinStudyRoom,
     leaveStudyRoom,
@@ -13,33 +18,47 @@ import {
 
 import { verifyUser } from "../middlewares/verifyUser.js";
 
-const studyRoomRouter = express.Router();
+const router = express.Router();
 
-// All Study Room routes require authentication
-studyRoomRouter.use(verifyUser);
 
 // Create a new room
-studyRoomRouter.post("/create", createStudyRoom);
+router.post("/create",verifyUser, createStudyRoom);
 
 // Get all rooms of the logged-in user
-studyRoomRouter.get("/myRooms", getMyStudyRooms);
+router.get("/myRooms",verifyUser, getMyStudyRooms);
 
 // Join a room using invitation code
-studyRoomRouter.post("/join", joinStudyRoom);
+router.post("/join",verifyUser, joinStudyRoom);
 
 // Get one room
-studyRoomRouter.get("/:id", getOneStudyRoom);
+router.get("/:id",verifyUser, getOneStudyRoom);
+
+// Share learning materials
+router.post("/:id/share/material", verifyUser, shareLearningMaterial);
+
+// Share a quiz
+router.post("/:id/share/quiz", verifyUser, shareQuiz);
+
+
+// Share flashcards
+router.post("/:id/share/flashcards", verifyUser, shareFlashcards);
+
+// Share learning session
+router.post("/:id/share/learning-session", verifyUser, shareLearningSession);
+
+// Get shared learning materials
+router.get("/:id/shared/materials", verifyUser, getSharedMaterials);
 
 // Update room details
-studyRoomRouter.put("/:id", updateStudyRoom);
+router.put("/:id",verifyUser, updateStudyRoom);
 
 // Leave a room
-studyRoomRouter.delete("/:id/leave", leaveStudyRoom);
+router.delete("/:id/leave",verifyUser, leaveStudyRoom);
 
 // Remove a member (owner only)
-studyRoomRouter.delete("/:id/members/:memberId", removeStudyRoomMember);
+router.delete("/:id/members/:memberId",verifyUser, removeStudyRoomMember);
 
 // Delete a room (owner only)
-studyRoomRouter.delete("/:id", deleteStudyRoom);
+router.delete("/:id",verifyUser, deleteStudyRoom);
 
-export default studyRoomRouter;
+export default router;
